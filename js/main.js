@@ -113,12 +113,52 @@ window.addEventListener("keydown", e => {
   }
 });
 
-document.getElementById("btnUp").addEventListener("click", () => tryJump(0, 1, "up"));
-document.getElementById("btnDown").addEventListener("click", () => tryJump(0, -1, "down"));
-document.getElementById("btnLeft").addEventListener("click", () => tryJump(-1, 0, "left"));
-document.getElementById("btnRight").addEventListener("click", () => tryJump(1, 0, "right"));
+// 5. KONTROL SENTUH NYAMAN (D-PAD & CANVAS)
+// Respon instan pada pointerdown (tanpa jeda 300ms), efek membal/menyala, cegah contextmenu & zoom
+function setupDpadButton(btnId, dx, dy, dir) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
 
-// Klik langsung di area canvas untuk melompat ke arah klik (koordinat akurat sesuai getBoardMetrics)
+  const triggerJump = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (state.gameOver || state.paused || state.wordSuccessPaused) return;
+    unlockAudio();
+    tryJump(dx, dy, dir);
+  };
+
+  btn.addEventListener("pointerdown", e => {
+    btn.classList.add("btn-pressed");
+    triggerJump(e);
+  });
+
+  const clearPress = () => btn.classList.remove("btn-pressed");
+  btn.addEventListener("pointerup", clearPress);
+  btn.addEventListener("pointercancel", clearPress);
+  btn.addEventListener("pointerleave", clearPress);
+
+  // Matikan menu tekan-lama (contextmenu) di tombol
+  btn.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  });
+}
+
+setupDpadButton("btnUp", 0, 1, "up");
+setupDpadButton("btnDown", 0, -1, "down");
+setupDpadButton("btnLeft", -1, 0, "left");
+setupDpadButton("btnRight", 1, 0, "right");
+
+// Cegah zoom dan scroll pada canvas saat disentuh
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+canvas.addEventListener("touchstart", e => {
+  if (e.cancelable) e.preventDefault();
+}, { passive: false });
+
+// Klik/Sentuh langsung di area canvas untuk melompat ke arah klik (koordinat akurat sesuai getBoardMetrics)
 canvas.addEventListener("pointerdown", e => {
   if (state.gameOver || state.paused || state.wordSuccessPaused) return;
   const rect = canvas.getBoundingClientRect();
@@ -282,6 +322,7 @@ if (btnFullscreen) {
 // ==========================================
 const legendPill = document.getElementById("legendPill");
 const btnToggleLegend = document.getElementById("btnToggleLegend");
+const btnCloseLegend = document.getElementById("btnCloseLegend");
 let legendTimer = setTimeout(() => {
   if (legendPill) {
     legendPill.classList.add("hidden");
@@ -295,12 +336,36 @@ if (btnToggleLegend && legendPill) {
   });
 }
 
+if (btnCloseLegend && legendPill) {
+  btnCloseLegend.addEventListener("click", () => {
+    legendPill.classList.add("hidden");
+  });
+}
+
+// 5. NYAMAN DISENTUH: Cegah geser layar/tarik refresh di Android Chrome
+window.addEventListener("touchmove", e => {
+  // Hanya izinkan scroll di dalam modal yang memang memiliki overflow-y-auto (misal modal aturan)
+  if (!e.target.closest("#rulesModal, #wordSuccessCard, #gameOverModal")) {
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
 // ==========================================
 // EVENT RESIZE & INISIALISASI
 // ==========================================
 window.addEventListener("resize", () => {
   resizeCanvas();
 });
+
+window.addEventListener("orientationchange", () => {
+  setTimeout(resizeCanvas, 120);
+});
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    resizeCanvas();
+  });
+}
 
 window.onload = () => {
   // Samakan pilihan di modal Aturan dengan pengaturan yang tersimpan

@@ -33,22 +33,34 @@ function resizeCanvas() {
 // HITUNG SKALA UKURAN VOXEL & KAMERA RESPONSIF
 // ==========================================
 function getBoardMetrics(W, H) {
-  // Target tinggi petak agar ~7 baris terlihat di depan slime (area depan = 72% dari tinggi layar)
-  const targetTileH = Math.floor(H / 8.2);
-  // Lebar maksimal petak agar 7 kolom tidak melebihi 94% lebar kanvas
-  const maxTileW = Math.floor((W * 0.94) / COLS);
-  
-  // tileW dihitung proporsional terhadap targetTileH (rasio ~1.36) tapi tidak melebihi lebar layar
-  let tileW = Math.min(maxTileW, Math.floor(targetTileH * 1.36));
-  // Batasi batas minimal 52px dan maksimal 165px
-  tileW = Math.max(52, Math.min(tileW, 165));
+  const isPortrait = H > W;
 
-  const tileH = Math.floor(tileW * 0.70);
-  const tileDepth = Math.max(12, Math.floor(tileH * 0.35));
-  const boardWidth = tileW * COLS;
-  const startX = Math.floor((W - boardWidth) / 2);
-  // Slime selalu berada di sepertiga bawah layar (28% dari bawah, 72% dari atas)
-  const baseScreenY = Math.floor(H * 0.72);
+  let tileW, tileH, tileDepth, boardWidth, startX, baseScreenY;
+
+  if (isPortrait) {
+    // Pada HP portrait (layar sempit), peta memenuhi lebar layar dengan margin proporsional (96% W)
+    const maxTileW = Math.floor((W * 0.96) / COLS);
+    // Batasi minimal 36px (layar lipat 320px) dan maksimal 160px
+    tileW = Math.max(36, Math.min(maxTileW, 160));
+    tileH = Math.floor(tileW * 0.70);
+    tileDepth = Math.max(8, Math.floor(tileH * 0.35));
+    boardWidth = tileW * COLS;
+    startX = Math.floor((W - boardWidth) / 2);
+    // Slime ditempatkan pada 83% dari atas (17% dari bawah) agar jalur di depan slime terlihat lebih banyak
+    // dan ruang kosong langit di atas berkurang drastis
+    baseScreenY = Math.floor(H * 0.83);
+  } else {
+    // Pada landscape & desktop, pertahankan estetika dan skala aslinya
+    const targetTileH = Math.floor(H / 8.0);
+    const maxTileW = Math.floor((W * 0.92) / COLS);
+    tileW = Math.min(maxTileW, Math.floor(targetTileH * 1.36));
+    tileW = Math.max(48, Math.min(tileW, 165));
+    tileH = Math.floor(tileW * 0.70);
+    tileDepth = Math.max(12, Math.floor(tileH * 0.35));
+    boardWidth = tileW * COLS;
+    startX = Math.floor((W - boardWidth) / 2);
+    baseScreenY = Math.floor(H * 0.72);
+  }
 
   return { tileW, tileH, tileDepth, boardWidth, startX, baseScreenY };
 }
@@ -737,9 +749,11 @@ function renderGame(timestamp) {
     return { x: sx, y: sy };
   }
 
-  // Render baris dari depan hingga 8 baris ke depan
+  // Render baris dari belakang slime hingga jalur jauh di depan slime
+  // Hitung jumlah baris di depan agar memenuhi tinggi canvas (mengurangi ruang kosong langit)
   const minRow = Math.max(0, Math.floor(state.cameraRow) - 2);
-  const maxRow = Math.floor(state.cameraRow) + 8;
+  const rowsAhead = Math.ceil((baseScreenY + tileH) / Math.max(tileH, 20));
+  const maxRow = Math.floor(state.cameraRow) + Math.min(VISIBLE_ROWS - 1, Math.max(9, rowsAhead));
 
   // Render dari baris terjauh ke terdekat (Depth Sorting 2.5D)
   for (let r = maxRow; r >= minRow; r--) {
