@@ -119,9 +119,12 @@ function spawnHurtDroplets(col, row) {
 // Spawn hujan konfeti warna-warni saat kata berhasil tersusun
 function spawnConfettiShower() {
   const colors = ["#6ee7b7", "#f472b6", "#38bdf8", "#fde047", "#c084fc", "#fb923c"];
+  // Konfeti digambar dalam satuan piksel CSS (setelah ctx.scale(dpr)), bukan piksel buffer
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssWidth = canvas.width / dpr;
   for (let i = 0; i < 40; i++) {
     confettiList.push({
-      x: Math.random() * canvas.width,
+      x: Math.random() * cssWidth,
       y: -20 - Math.random() * 120,
       vx: (Math.random() - 0.5) * 2.5,
       vy: 2.0 + Math.random() * 3.2,

@@ -8,8 +8,23 @@ let audioCtx = null;
 let musicMasterGain = null;
 let sfxMasterGain = null;
 
-let bgmEnabled = localStorage.getItem("slime_bgm_enabled") !== "false"; // default true
-let sfxEnabled = localStorage.getItem("slime_sfx_enabled") !== "false"; // default true
+// localStorage bisa melempar error (mode privat / cookie diblokir), jangan sampai game gagal dimuat
+function readAudioPref(key) {
+  try {
+    return localStorage.getItem(key) !== "false";
+  } catch (e) {
+    return true;
+  }
+}
+
+function saveAudioPref(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {}
+}
+
+let bgmEnabled = readAudioPref("slime_bgm_enabled"); // default true
+let sfxEnabled = readAudioPref("slime_sfx_enabled"); // default true
 
 let audioUnlocked = false;
 let bgmIsPlaying = false;
@@ -27,6 +42,7 @@ let duckSafetyTimer = null;
 
 // State Speech Synthesis
 let idVoice = null;
+let speechSeq = 0; // nomor ucapan terbaru, agar ucapan lama yang dibatalkan tidak mematikan ducking
 
 // ==========================================
 // 1. INISIALISASI & UNLOCK AUDIOCONTEXT
@@ -248,6 +264,8 @@ function duckBGM(duck) {
 // 4. EFEK SUARA (SFX) WEB AUDIO API
 // ==========================================
 function playSFX(type) {
+  // BGM tetap harus berhenti saat game over walau efek suara dimatikan
+  if (type === "game_over") stopBGM();
   if (!sfxEnabled) return;
   initAudioContext();
   if (!audioCtx) return;
@@ -394,8 +412,7 @@ function playSFX(type) {
     }
 
     case "game_over": {
-      // 3 nada turun pelan saat game over & hentikan BGM
-      stopBGM();
+      // 3 nada turun pelan saat game over (BGM sudah dihentikan di awal playSFX)
       const notes = [329.63, 293.66, 261.63]; // E4, D4, C4
       notes.forEach((freq, idx) => {
         const o = audioCtx.createOscillator();
@@ -466,11 +483,14 @@ function speakText(text, onComplete) {
     utterance.rate = 0.8; // Kecepatan ramah anak
     utterance.pitch = 1.05;
 
+    const mySeq = ++speechSeq;
     let hasEnded = false;
     const finish = () => {
       if (hasEnded) return;
       hasEnded = true;
-      duckBGM(false);
+      // cancel() memicu onerror/onend ucapan sebelumnya; jangan kembalikan volume musik
+      // jika ucapan yang lebih baru masih berbunyi
+      if (mySeq === speechSeq) duckBGM(false);
       if (onComplete) onComplete();
     };
 
@@ -567,7 +587,7 @@ function updateAudioUI() {
 function toggleBGM() {
   unlockAudio();
   bgmEnabled = !bgmEnabled;
-  localStorage.setItem("slime_bgm_enabled", bgmEnabled);
+  saveAudioPref("slime_bgm_enabled", bgmEnabled);
 
   if (musicMasterGain && audioCtx) {
     musicMasterGain.gain.setValueAtTime(bgmEnabled ? 0.25 : 0.0, audioCtx.currentTime);
@@ -587,7 +607,7 @@ function toggleBGM() {
 function toggleSFX() {
   unlockAudio();
   sfxEnabled = !sfxEnabled;
-  localStorage.setItem("slime_sfx_enabled", sfxEnabled);
+  saveAudioPref("slime_sfx_enabled", sfxEnabled);
 
   if (sfxMasterGain && audioCtx) {
     sfxMasterGain.gain.setValueAtTime(sfxEnabled ? 0.8 : 0.0, audioCtx.currentTime);

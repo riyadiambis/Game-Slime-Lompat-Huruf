@@ -48,24 +48,7 @@ let state = {
   floatingTexts: []
 };
 
-// ==========================================
-// PENGUCAPAN SUARA HURUF (WEB SPEECH API)
-// ==========================================
-function speakLetter(ch) {
-  if (!soundEnabled) return;
-  try {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(ch.toLowerCase());
-      utter.lang = 'id-ID';
-      utter.rate = 0.9;
-      utter.pitch = 1.1;
-      window.speechSynthesis.speak(utter);
-    }
-  } catch (e) {
-    // Abaikan jika tidak didukung browser
-  }
-}
+// Pengucapan huruf (speakLetter, speakLetterAndSyllable) disediakan oleh js/audio.js
 
 // ==========================================
 // GENERASI BARIS DUNIA VOXEL & HURUF
@@ -324,19 +307,25 @@ function fillWildcardLetter(col, row) {
     const filledChar = targetChars[currentSlotIndex];
     state.collectedSlots[currentSlotIndex] = filledChar;
     state.score += 30;
-    playSFX("star"); // Arpeggio 3 nada naik saat ambil bintang joker
+    const completesWord = !state.collectedSlots.some(s => s === "");
 
-    // Suara baca sesuai posisi slot
-    if (currentSlotIndex === 1) {
-      // Saat slot 2 terisi: bacakan suku kata pertama (contoh: "E... me")
-      const [syl1] = getWordSyllablesSafe(state.currentWordObj.word);
-      speakLetterAndSyllable(filledChar, syl1);
-    } else {
-      speakLetter(filledChar);
+    // Jika bintang mengisi slot terakhir, biarkan jingle & suara perayaan kata yang tampil
+    // (arpeggio bintang memakai nada yang sama dengan jingle sehingga terdengar bertabrakan)
+    if (!completesWord) {
+      playSFX("star"); // Arpeggio 3 nada naik saat ambil bintang joker
+
+      // Suara baca sesuai posisi slot
+      if (currentSlotIndex === 1) {
+        // Saat slot 2 terisi: bacakan suku kata pertama (contoh: "E... me")
+        const [syl1] = getWordSyllablesSafe(state.currentWordObj.word);
+        speakLetterAndSyllable(filledChar, syl1);
+      } else {
+        speakLetter(filledChar);
+      }
     }
 
     spawnParticles(col, row, "#facc15", 18);
-    spawnFloatingText(col, row, `★ JOKER [${filledChar}]`, "#facc15");
+    spawnFloatingText(col, row, `★ ${filledChar} (+30)`, "#facc15");
     checkWordCompletion(col, row);
     refreshExistingRowLetters();
     updateHUD();
@@ -348,7 +337,9 @@ function processCollectedLetter(ch, col, row) {
   const currentSlotIndex = state.collectedSlots.findIndex(s => s === "");
   if (currentSlotIndex === -1) return;
 
-  const expectedChar = targetChars[currentSlotIndex];
+  // Mode bebas: huruf apa saja langsung mengisi slot berikutnya
+  const isFreeMode = rules.gameMode === "free";
+  const expectedChar = isFreeMode ? ch : targetChars[currentSlotIndex];
 
   if (ch === expectedChar) {
     // ==========================================
@@ -359,7 +350,8 @@ function processCollectedLetter(ch, col, row) {
     playSFX("letter_ok"); // "ting" ceria + gelembung pecah
 
     // Suara baca: saat huruf benar diambil
-    if (currentSlotIndex === 1) {
+    // (suku kata hanya relevan di mode misi, karena di mode bebas kata belum tentu sama dengan target)
+    if (currentSlotIndex === 1 && !isFreeMode) {
       // Saat slot 2 terisi: bacakan huruf & suku kata pertama (contoh MEJA: "me")
       const [syl1] = getWordSyllablesSafe(state.currentWordObj.word);
       speakLetterAndSyllable(ch, syl1);
@@ -444,6 +436,7 @@ const CELEBRATION_TITLES = [
 
 let canProceedNextWord = false;
 let currentCelebrationWord = "";
+let nextWordCooldownTimer = null;
 
 function showWordSuccessModal(word) {
   currentCelebrationWord = word;
@@ -486,7 +479,10 @@ function showWordSuccessModal(word) {
     cooldownHint.classList.remove("opacity-0");
   }
 
-  setTimeout(() => {
+  // Batalkan hitung mundur lama agar tombol tidak aktif lebih cepat dari 1 detik
+  clearTimeout(nextWordCooldownTimer);
+  nextWordCooldownTimer = setTimeout(() => {
+    nextWordCooldownTimer = null;
     canProceedNextWord = true;
     window.canProceedNextWord = true;
     if (btnNext) {
@@ -505,7 +501,10 @@ function showWordSuccessModal(word) {
 }
 
 function proceedToNextWord() {
+  if (!state.wordSuccessPaused) return;
   if (!canProceedNextWord && !window.canProceedNextWord) return;
+  canProceedNextWord = false;
+  window.canProceedNextWord = false;
 
   const modal = document.getElementById("wordSuccessModal");
   if (modal) {
@@ -559,6 +558,8 @@ function tryJump(dCol, dRow, facingDir) {
   const targetRow = state.player.row + dRow;
 
   if (targetCol < 0 || targetCol >= COLS) return;
+  // Baris negatif tidak pernah digambar, slime akan hilang ke luar dunia
+  if (targetRow < 0) return;
   if (targetRow < Math.floor(state.cameraRow) - 1) return;
 
   state.player.jumping = true;
@@ -578,6 +579,8 @@ function tryJump(dCol, dRow, facingDir) {
 }
 
 function triggerGameOver(reasonText) {
+  // Cegah game over ganda dalam satu frame (misal lantai runtuh + tertabrak bersamaan)
+  if (state.gameOver) return;
   state.gameOver = true;
   playSFX("game_over"); // 3 nada turun pelan & stop BGM
   document.getElementById("gameOverReason").textContent = reasonText;
@@ -722,6 +725,9 @@ function updateGame(dt) {
         handleCollectItem(tile, state.player.col, state.player.row);
       }
       updateHUD();
+      // Kata baru saja lengkap: pop up tampil, hentikan sisa update frame ini
+      // agar slime jahat tidak menabrak di balik pop up
+      if (state.wordSuccessPaused) return;
     } else {
       const p = state.player.jumpProgress;
       state.player.renderX = state.player.startCol + (state.player.targetCol - state.player.startCol) * p;
@@ -771,8 +777,11 @@ function updateGame(dt) {
       }
     });
 
+    if (state.gameOver) return;
+
     // Update robot duri di baris jalan
     rowData.obstacles.forEach(obs => {
+      if (state.gameOver) return;
       obs.x += obs.dir * obs.speed * dt;
       if (obs.dir > 0 && obs.x > COLS + 0.5) obs.x = -0.5;
       if (obs.dir < 0 && obs.x < -0.5) obs.x = COLS + 0.5;
@@ -782,8 +791,9 @@ function updateGame(dt) {
       const sameCol = Math.abs(state.player.renderX - obs.x) < 0.52;
       if (sameRow && sameCol && state.player.jumpZ < 0.55) {
         if (state.shieldTimer > 0) {
-          // Hancurkan rintangan saat mode perisai
-          obs.x = -99;
+          // Hancurkan rintangan saat mode perisai: lempar ke luar layar di sisi asalnya
+          // (x = -99 untuk slime yang bergerak ke kiri langsung di-wrap kembali ke tepi kanan)
+          obs.x = obs.dir > 0 ? -3 : COLS + 3;
           spawnParticles(state.player.renderX, r, "#facc15", 15);
           spawnFloatingText(state.player.renderX, r, "PERISAI!", "#facc15");
         } else {

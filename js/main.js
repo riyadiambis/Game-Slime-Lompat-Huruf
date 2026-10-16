@@ -66,8 +66,14 @@ function startNewGame() {
 // ==========================================
 // EVENT LISTENERS (KEYBOARD, TOUCH, KLIK, UI)
 // ==========================================
+// Pintasan uji pop up (tombol P & klik slot ke-4) hanya aktif jika URL berisi ?debug
+// agar anak tidak bisa tanpa sengaja melewati kata dan mendapat poin gratis
+const DEBUG_MODE = new URLSearchParams(window.location.search).has("debug");
+
 window.addEventListener("keydown", e => {
   if (state.gameOver || state.paused) return;
+  // Sebagian event (misal autofill browser) tidak memiliki e.key
+  if (typeof e.key !== "string") return;
 
   // 3. ANTI KEPENCET TIDAK SENGAJA saat Pop Up Sukses Kata Tampil
   // Pop up ditutup HANYA lewat tombol Lanjut atau tombol Enter.
@@ -85,7 +91,7 @@ window.addEventListener("keydown", e => {
   }
 
   const key = e.key.toLowerCase();
-  if (key === "p") {
+  if (key === "p" && DEBUG_MODE) {
     unlockAudio();
     const testWord = state.currentWordObj ? state.currentWordObj.word : "MEJA";
     completeWordSuccess(testWord, state.player.col, state.player.row, 100);
@@ -156,9 +162,11 @@ if (btnHearWord) {
 
 // Event untuk menguji perayaan kata (klik slot terakhir atau tekan P)
 const slot3El = document.getElementById("slot3");
-if (slot3El) {
+if (slot3El && DEBUG_MODE) {
   slot3El.style.cursor = "pointer";
   slot3El.addEventListener("click", () => {
+    // Jangan picu perayaan ganda saat pop up tampil / game selesai / dijeda
+    if (state.gameOver || state.paused || state.wordSuccessPaused) return;
     unlockAudio();
     const testWord = state.currentWordObj ? state.currentWordObj.word : "MEJA";
     completeWordSuccess(testWord, state.player.col, state.player.row, 100);
@@ -166,6 +174,8 @@ if (slot3El) {
 }
 
 document.getElementById("btnSkipWord").addEventListener("click", () => {
+  // Saat pop up sukses tampil, kata berikutnya dipilih oleh tombol Lanjut
+  if (state.gameOver || state.wordSuccessPaused) return;
   unlockAudio();
   if (rules.gameMode === "quest") {
     pickNextTargetWord();
@@ -221,24 +231,32 @@ document.getElementById("btnApplyRules").addEventListener("click", () => {
 // ==========================================
 const btnFullscreen = document.getElementById("btnFullscreen");
 if (btnFullscreen) {
+  const getFullscreenElement = () =>
+    document.fullscreenElement || document.webkitFullscreenElement || null;
+
   btnFullscreen.addEventListener("click", () => {
-    if (!document.fullscreenElement) {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      } else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen();
+    // requestFullscreen bisa ditolak (misal iPhone), abaikan agar tidak muncul error
+    try {
+      let result;
+      if (!getFullscreenElement()) {
+        if (document.documentElement.requestFullscreen) {
+          result = document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          result = document.documentElement.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          result = document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          result = document.webkitExitFullscreen();
+        }
       }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
-    }
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch (e) {}
   });
 
   const onFullscreenChange = () => {
-    const isFull = !!document.fullscreenElement;
+    const isFull = !!getFullscreenElement();
     btnFullscreen.title = isFull ? "Keluar Layar Penuh" : "Layar Penuh";
     setTimeout(resizeCanvas, 100);
   };
