@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Voxel Kata 4: Lompat & Rangkai Kata</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .letter-slot {
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35);
+    }
+    .letter-slot.filled {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 8px 0 rgba(16, 185, 129, 0.45);
+    }
+    .dpad-btn {
+      box-shadow: 0 5px 0 #1e293b;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .dpad-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 #1e293b;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+  <!-- Top Header / Controls Bar -->
+  <header class="w-full bg-slate-900/95 border-b border-slate-800 px-3 py-2.5 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20 font-display font-extrabold text-slate-950 text-lg">
+          V4
+        </div>
+        <div>
+          <h1 class="font-display font-extrabold text-sm sm:text-base tracking-tight leading-none text-white">
+            VOXEL KATA <span class="text-emerald-400">4 HURUF</span>
+          </h1>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Lompat blok voxel, hindari rintangan & susun kata 4 huruf</p>
+        </div>
+      </div>
+
+      <!-- Live Stats & Action Buttons -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1">
+          <span class="text-xs text-slate-400">Skor</span>
+          <span id="scoreDisplay" class="font-display font-bold text-sm sm:text-base text-amber-400">0</span>
+        </div>
+        <div class="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2.5 py-1">
+          <span class="text-xs text-slate-400">Kata</span>
+          <span id="wordsCountDisplay" class="font-display font-bold text-sm sm:text-base text-emerald-400">0</span>
+        </div>
+        <div id="livesDisplay" class="flex items-center gap-0.5 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1 text-sm" title="Nyawa">
+          ❤️❤️❤️
+        </div>
+
+        <button id="btnRulesModal" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-1">
+          <span>⚙️</span> <span class="hidden sm:inline">Aturan</span>
+        </button>
+        <button id="btnSoundToggle" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition" title="Suara Efek">
+          🔊
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="flex-1 w-full max-w-5xl mx-auto px-2 sm:px-4 py-2 sm:py-3 flex flex-col gap-2.5">
+
+    <!-- Word Target HUD Banner -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-2.5 sm:p-3.5 shadow-lg">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+        <!-- Clue & Mode Info -->
+        <div class="flex flex-col items-center md:items-start text-center md:text-left">
+          <div class="flex items-center gap-2">
+            <span id="modeBadge" class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Mode Target Kata
+            </span>
+            <span id="orderBadge" class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+              Urutan: Bebas
+            </span>
+          </div>
+          <p id="wordClueText" class="text-xs sm:text-sm text-slate-300 mt-1 font-medium">
+            Petunjuk: <strong class="text-amber-300">Benda bundar untuk olahraga sepak...</strong>
+          </p>
+        </div>
+
+        <!-- 4-Letter Slots -->
+        <div class="flex items-center gap-2 sm:gap-2.5">
+          <div id="slot0" class="letter-slot w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl text-white">
+            _
+          </div>
+          <div id="slot1" class="letter-slot w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl text-white">
+            _
+          </div>
+          <div id="slot2" class="letter-slot w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl text-white">
+            _
+          </div>
+          <div id="slot3" class="letter-slot w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl text-white">
+            _
+          </div>
+          <button id="btnSkipWord" type="button" class="ml-1 px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition" title="Ganti Kata Target / Reset Huruf">
+            🔄 Ganti
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game Canvas + Overlay Wrapper -->
+    <div id="canvasWrapper" class="relative w-full flex-1 min-h-[340px] sm:min-h-[430px] bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex items-center justify-center">
+      <canvas id="gameCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+      <!-- Floating Status Toast -->
+      <div id="statusToast" class="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-slate-950/85 border border-slate-700/80 text-xs sm:text-sm font-bold text-emerald-300 opacity-0 transition-opacity duration-200 shadow-lg">
+        Kata Selesai! +100 Poin
+      </div>
+
+      <!-- On-Screen Mobile / Quick D-Pad Controls -->
+      <div class="absolute bottom-3 right-3 z-20 flex flex-col items-center gap-1 opacity-90 hover:opacity-100">
+        <button id="btnUp" type="button" aria-label="Lompat Maju" class="dpad-btn w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800/95 hover:bg-slate-700 border border-slate-600 text-white font-bold text-lg flex items-center justify-center">
+          ▲
+        </button>
+        <div class="flex items-center gap-1">
+          <button id="btnLeft" type="button" aria-label="Lompat Kiri" class="dpad-btn w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800/95 hover:bg-slate-700 border border-slate-600 text-white font-bold text-lg flex items-center justify-center">
+            ◀
+          </button>
+          <button id="btnDown" type="button" aria-label="Lompat Mundur" class="dpad-btn w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800/95 hover:bg-slate-700 border border-slate-600 text-white font-bold text-lg flex items-center justify-center">
+            ▼
+          </button>
+          <button id="btnRight" type="button" aria-label="Lompat Kanan" class="dpad-btn w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800/95 hover:bg-slate-700 border border-slate-600 text-white font-bold text-lg flex items-center justify-center">
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <!-- Legend / Controls Helper Pill (Bottom Left) -->
+      <div class="hidden sm:flex absolute bottom-3 left-3 z-10 items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300">
+        <span>⌨️ <strong>WASD / Panah</strong>: Lompat</span>
+        <span>🟩 <strong>Blok Hijau</strong>: Huruf Target</span>
+        <span>⭐ <strong>Bintang</strong>: Huruf Joker</span>
+        <span>🟥 <strong>Robot Duri</strong>: Hindari!</span>
+      </div>
+
+      <!-- Game Over / Pause Overlay Modal -->
+      <div id="gameOverModal" class="hidden absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 text-center shadow-2xl">
+          <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-3xl">
+            💥
+          </div>
+          <h2 id="gameOverTitle" class="font-display font-extrabold text-2xl text-white">Permainan Selesai!</h2>
+          <p id="gameOverReason" class="text-sm text-slate-300 mt-1">Kamu kehabisan nyawa saat melompat.</p>
+
+          <div class="grid grid-cols-2 gap-2.5 my-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+            <div>
+              <div class="text-xs text-slate-400">Skor Akhir</div>
+              <div id="finalScoreText" class="font-display font-extrabold text-xl text-amber-400">0</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">Kata Terbentuk</div>
+              <div id="finalWordsText" class="font-display font-extrabold text-xl text-emerald-400">0</div>
+            </div>
+          </div>
+
+          <div id="completedWordsList" class="text-xs text-slate-400 mb-4">
+            Belum ada kata yang selesai.
+          </div>
+
+          <button id="btnRestartGame" type="button" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-display font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition">
+            Main Lagi Sekarang 🚀
+          </button>
+        </div>
+      </div>
+
+      <!-- Rules & Customization Modal (Tweak Game Design Live!) -->
+      <div id="rulesModal" class="hidden absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h2 class="font-display font-bold text-lg text-white">⚙️ Kustomisasi Mekanisme Game</h2>
+            <button id="btnCloseRules" type="button" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1 rounded-lg bg-slate-800">✕</button>
+          </div>
+
+          <div class="space-y-3.5 my-4 text-xs sm:text-sm">
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">1. Mode Penyusunan Kata 4 Huruf</label>
+              <select id="selectGameMode" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+                <option value="quest">Target Kata + Petunjuk (Ada kata sasaran)</option>
+                <option value="free">Bebas Rangkai (Ambil 4 huruf apa saja di kamus)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">2. Aturan Urutan Pengambilan Huruf</label>
+              <select id="selectOrderRule" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+                <option value="any">Bebas / Acak (Yang penting 4 huruf terkumpul)</option>
+                <option value="strict">Harus Berurutan (Huruf ke-1 sampai ke-4)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">3. Konsekuensi Salah Ambil Huruf</label>
+              <select id="selectPenaltyRule" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+                <option value="score">Santai: Kurangi 15 Poin Saja</option>
+                <option value="life">Tantangan: Kurangi 1 Nyawa (❤️)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">4. Sorot Warna Huruf Target di Lantai</label>
+              <select id="selectHighlightHint" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+                <option value="on">Aktif (Huruf yang dibutuhkan menyala hijau)</option>
+                <option value="off">Nonaktif (Semua blok huruf berwarna sama)</option>
+              </select>
+            </div>
+          </div>
+
+          <button id="btnApplyRules" type="button" class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-extrabold text-sm transition">
+            Simpan & Terapkan ke Permainan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Quick Dictionary / Collected Words Bar -->
+    <footer class="bg-slate-900/80 border border-slate-800/90 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+      <div class="flex items-center gap-2 overflow-x-auto">
+        <span class="font-semibold text-slate-300 whitespace-nowrap">Kata Berhasil:</span>
+        <div id="wordHistoryPills" class="flex items-center gap-1.5">
+          <span class="text-slate-500 italic">Lompat ke kubus huruf untuk mulai merangkai!</span>
+        </div>
+      </div>
+      <div class="text-[11px] text-slate-400">
+        Tip: Klik petak di dekat karakter atau gunakan tombol arah untuk melompat.
+      </div>
+    </footer>
+
+  </main>
+
+  <script>
+    // ==========================================
+    // KAMUS KATA 4 HURUF BAHASA INDONESIA
+    // ==========================================
+    const WORD_BANK = [
+      { word: "BOLA", clue: "Benda bundar untuk olahraga sepak atau basket" },
+      { word: "BUKU", clue: "Kumpulan lembar kertas berisi bacaan ilmu" },
+      { word: "KOPI", clue: "Minuman hangat berkafein teman begadang" },
+      { word: "LARI", clue: "Melangkahkan kaki dengan kecepatan tinggi" },
+      { word: "KAYU", clue: "Bahan keras yang berasal dari batang pohon" },
+      { word: "NASI", clue: "Makanan pokok masyarakat Indonesia dari beras" },
+      { word: "MATA", clue: "Indra untuk melihat dunia sekitar" },
+      { word: "GURU", clue: "Sosok pengajar dan pendidik di sekolah" },
+      { word: "BIRU", clue: "Warna langit cerah dan lautan luas" },
+      { word: "SAPI", clue: "Hewan ternak penghasil susu dan daging" },
+      { word: "ROTI", clue: "Makanan berbahan tepung yang dipanggang" },
+      { word: "PAGI", clue: "Waktu saat matahari baru terbit" },
+      { word: "LAGU", clue: "Gubahan musik yang dinyanyikan dengan irama" },
+      { word: "KUDA", clue: "Hewan berkaki empat yang cepat untuk ditunggangi" },
+      { word: "BATU", clue: "Benda alam yang keras dan padat di sungai/gunung" },
+      { word: "RAJA", clue: "Pemimpin tertinggi sebuah kerajaan" },
+      { word: "TOPI", clue: "Aksesori pelindung kepala dari panas matahari" },
+      { word: "DADU", clue: "Kubus kecil bernomor titik 1 sampai 6" },
+      { word: "PETA", clue: "Gambar permukaan bumi penunjuk arah lokasi" },
+      { word: "SUSU", clue: "Minuman putih bergizi tinggi kaya kalsium" },
+      { word: "MEJA", clue: "Perabot berkaki tempat menaruh buku atau makanan" },
+      { word: "KACA", clue: "Benda bening tembus pandang untuk jendela" },
+      { word: "GULA", clue: "Bahan pemanis makanan dan minuman" },
+      { word: "PENA", clue: "Alat tulis bertinta untuk menulis di kertas" },
+      { word: "ikan".toUpperCase(), clue: "Hewan bernapas dengan insang yang hidup di air" },
+      { word: "AWAN", clue: "Kumpulan uap air putih yang melayang di langit" },
+      { word: "APIK", clue: "Rapi, bersih, dan bagus sekali" },
+      { word: "emas".toUpperCase(), clue: "Logam mulia berwarna kuning berkilau" }
+    ];
+
+    const EXTRA_VALID_4_WORDS = new Set([
+      ...WORD_BANK.map(w => w.word),
+      "ADIK", "AIRI", "AJAR", "AKAR", "AKSI", "ALAM", "ALAT", "AMAN", "ANAK", "ANGK",
+      "APEL", "ARAH", "ARUS", "ASAM", "ASAP", "ASLI", "ATAP", "ATAS", "AYAH", "AYAM",
+      "BACA", "BAJU", "BAIK", "BARA", "BARU", "BATA", "BAYI", "BESI", "BISA", "BUAH",
+      "BUAT", "BUMI", "BUSA", "BUTA", "CARA", "CARI", "CUCI", "CUKA", "DADA", "DAUN",
+      "DAYA", "DEBU", "DESA", "DIRI", "DOA", "DUKA", "DURI", "EKOR", "ENAM", "FOTO",
+      "GAJI", "GALI", "GIGI", "GOA", "GUNA", "HARI", "HATI", "HIU", "HOBI", "IBU",
+      "IKAT", "ILMU", "INTI", "ISI", "JADI", "JAGA", "JALA", "JAMU", "JARI", "JASA",
+      "JATI", "JAUH", "JIWA", "JUGA", "KAKI", "KALI", "KAMI", "KAMU", "KATA", "KAYA",
+      "KEJU", "KERA", "KIRI", "KITA", "KOTA", "KUAT", "KUE", "KUKU", "KUNO", "LABA",
+      "LAGI", "LAIN", "LAKU", "LALU", "LAMA", "LAUT", "LIMA", "LUKA", "LUPA", "MAJU",
+      "MAKA", "MASA", "MADU", "MAIN", "MALU", "MANA", "MARI", "MAU", "MEGA", "MINI",
+      "MUKA", "MULA", "NADA", "NAIK", "NAMA", "NYIUR", "OBAT", "OLAH", "OTAK", "OTOT",
+      "PADI", "PAKU", "PALU", "PAPA", "PARA", "PASU", "PAUS", "PIPI", "PITA", "POLA",
+      "PUAS", "PULA", "PULU", "RAGA", "RAPI", "RASA", "RATU", "RUSA", "RODA", "SAMA",
+      "SANA", "SAPU", "SATU", "SAYA", "SEGI", "SENI", "SIAP", "SISI", "SORE", "SUKA",
+      "SUKU", "TALI", "TANI", "TAPI", "TARI", "TEBU", "TEPI", "TIGA", "TIBA", "TOKO",
+      "TUJU", "TULI", "UANG", "UBAT", "UDANG", "UJIAN", "ULAR", "ULAT", "UMUR", "UNIK",
+      "UPAH", "USIA", "USUL", "UTUH", "WAKTU", "WARNA", "YOGA", "ZONA"
+    ]);
+
+    // ==========================================
+    // WEB AUDIO SYNTHESIZER (TANPA FILE EKSTERNAL)
+    // ==========================================
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === "jump") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.exponentialRampToValueAtTime(460, now + 0.09);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === "letter_ok") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.06); // E5
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      } else if (type === "word_complete") {
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.type = "triangle";
+          o.connect(g);
+          g.connect(audioCtx.destination);
+          o.frequency.setValueAtTime(freq, now + idx * 0.06);
+          g.gain.setValueAtTime(0.22, now + idx * 0.06);
+          g.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.06 + 0.22);
+          o.start(now + idx * 0.06);
+          o.stop(now + idx * 0.06 + 0.22);
+        });
+      } else if (type === "wrong" || type === "hit") {
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.linearRampToValueAtTime(95, now + 0.2);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+    }
+
+    // ==========================================
+    // KONFIGURASI & STATE GAME VOXEL
+    // ==========================================
+    const COLS = 7;
+    const VISIBLE_ROWS = 13;
+
+    const rules = {
+      gameMode: "quest",     // "quest" | "free"
+      orderRule: "any",      // "any" | "strict"
+      penaltyRule: "score",  // "score" | "life"
+      highlightHint: "on"    // "on" | "off"
+    };
+
+    let state = {
+      score: 0,
+      lives: 3,
+      wordsCompleted: 0,
+      completedWords: [],
+      gameOver: false,
+      paused: false,
+      currentWordObj: WORD_BANK[0],
+      collectedSlots: ["", "", "", ""], // 4 slots
+      shieldTimer: 0,
+      cameraRow: 0,
+      player: {
+        col: 3,
+        row: 1,
+        renderX: 3,
+        renderY: 1,
+        jumpZ: 0,
+        jumping: false,
+        jumpProgress: 0,
+        startCol: 3,
+        startRow: 1,
+        targetCol: 3,
+        targetRow: 1,
+        facing: "up"
+      },
+      rows: new Map(), // rowIndex -> rowData
+      particles: [],
+      floatingTexts: []
+    };
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    let animFrameId = null;
+    let lastTimestamp = 0;
+
+    // ==========================================
+    // GENERASI BARIS DUNIA VOXEL & HURUF
+    // ==========================================
+    function getNeededLetters() {
+      if (rules.gameMode === "free") {
+        return ["A", "I", "U", "E", "O", "B", "K", "L", "M", "R", "S", "T"];
+      }
+      const target = state.currentWordObj.word.split("");
+      if (rules.orderRule === "strict") {
+        const nextIdx = state.collectedSlots.findIndex(ch => ch === "");
+        return nextIdx !== -1 ? [target[nextIdx]] : target;
+      } else {
+        const needed = [];
+        for (let i = 0; i < 4; i++) {
+          if (!state.collectedSlots[i]) needed.push(target[i]);
+        }
+        return needed.length > 0 ? needed : target;
+      }
+    }
+
+    function pickSpawnLetter() {
+      const needed = getNeededLetters();
+      if (Math.random() < 0.58 && needed.length > 0) {
+        return needed[Math.floor(Math.random() * needed.length)];
+      }
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      return alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+
+    function generateRow(rowIndex) {
+      if (state.rows.has(rowIndex)) return state.rows.get(rowIndex);
+
+      // Baris awal selalu aman
+      const isSafeStart = rowIndex <= 2;
+      let rowType = "grass";
+      if (!isSafeStart) {
+        const r = Math.random();
+        if (r < 0.55) rowType = "grass";
+        else if (r < 0.82) rowType = "road";
+        else rowType = "crumble";
+      }
+
+      const tiles = [];
+      for (let c = 0; c < COLS; c++) {
+        let tileState = "solid";
+        let crumbleTimer = 0;
+        let item = null;
+
+        // Tambahkan huruf atau item di beberapa petak
+        if (rowIndex >= 2) {
+          const itemRoll = Math.random();
+          if (itemRoll < 0.28) {
+            item = {
+              type: "letter",
+              char: pickSpawnLetter(),
+              bobOffset: Math.random() * Math.PI * 2
+            };
+          } else if (itemRoll < 0.305) {
+            item = {
+              type: "wildcard",
+              char: "★",
+              bobOffset: Math.random() * Math.PI * 2
+            };
+          } else if (itemRoll < 0.315 && state.lives < 3) {
+            item = {
+              type: "heart",
+              char: "♥",
+              bobOffset: Math.random() * Math.PI * 2
+            };
+          }
+        }
+
+        tiles.push({
+          col: c,
+          type: rowType,
+          state: tileState,
+          crumbleTimer: crumbleTimer,
+          item: item
+        });
+      }
+
+      // Tambahkan rintangan bergerak (Robot Duri Voxel) di jalur "road"
+      const obstacles = [];
+      if (rowType === "road" && !isSafeStart) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const speed = 1.15 + Math.random() * 1.15 + Math.min(0.8, state.wordsCompleted * 0.08);
+        const count = Math.random() < 0.45 ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+          obstacles.push({
+            x: (i * (COLS / count) + Math.random() * 1.5) % COLS,
+            dir: dir,
+            speed: speed
+          });
+        }
+      }
+
+      const rowData = {
+        rowIndex,
+        rowType,
+        tiles,
+        obstacles
+      };
+      state.rows.set(rowIndex, rowData);
+      return rowData;
+    }
+
+    // ==========================================
+    // LOGIKA KATA 4 HURUF & SKOR
+    // ==========================================
+    function pickNextTargetWord() {
+      const remaining = WORD_BANK.filter(
+        w => w.word !== (state.currentWordObj && state.currentWordObj.word)
+      );
+      state.currentWordObj = remaining[Math.floor(Math.random() * remaining.length)];
+      state.collectedSlots = ["", "", "", ""];
+      refreshExistingRowLetters();
+      updateHUD();
+    }
+
+    function refreshExistingRowLetters() {
+      // Pastikan di baris depan pemain selalu ada huruf yang dibutuhkan
+      const needed = getNeededLetters();
+      if (needed.length === 0) return;
+      for (let r = state.player.row + 1; r <= state.player.row + 6; r++) {
+        const rowData = generateRow(r);
+        if (Math.random() < 0.65) {
+          const randCol = Math.floor(Math.random() * COLS);
+          rowData.tiles[randCol].item = {
+            type: "letter",
+            char: needed[Math.floor(Math.random() * needed.length)],
+            bobOffset: Math.random() * Math.PI * 2
+          };
+        }
+      }
+    }
+
+    function showToast(msg, colorClass = "text-emerald-300") {
+      const toast = document.getElementById("statusToast");
+      toast.textContent = msg;
+      toast.className = `pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-slate-950/90 border border-slate-700 text-xs sm:text-sm font-bold ${colorClass} opacity-100 transition-opacity duration-200 shadow-lg z-20`;
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.classList.remove("opacity-100");
+        toast.classList.add("opacity-0");
+      }, 1700);
+    }
+
+    function spawnParticles(col, row, color, count = 14) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 3.5;
+        state.particles.push({
+          col,
+          row,
+          vx: Math.cos(angle) * speed * 0.08,
+          vy: Math.sin(angle) * speed * 0.08,
+          vz: 2 + Math.random() * 3.5,
+          z: 0.2,
+          color,
+          life: 1.0
+        });
+      }
+    }
+
+    function spawnFloatingText(col, row, text, color = "#34d399") {
+      state.floatingTexts.push({
+        col,
+        row,
+        z: 1.2,
+        text,
+        color,
+        life: 1.0
+      });
+    }
+
+    function handleCollectItem(tile, col, row) {
+      const item = tile.item;
+      if (!item) return;
+
+      if (item.type === "heart") {
+        tile.item = null;
+        state.lives = Math.min(3, state.lives + 1);
+        playSound("letter_ok");
+        spawnParticles(col, row, "#f43f5e", 16);
+        spawnFloatingText(col, row, "+1 NYAWA ♥", "#fb7185");
+        updateHUD();
+        return;
+      }
+
+      if (item.type === "wildcard") {
+        tile.item = null;
+        fillWildcardLetter(col, row);
+        return;
+      }
+
+      if (item.type === "letter") {
+        const ch = item.char;
+        tile.item = null;
+        processCollectedLetter(ch, col, row);
+      }
+    }
+
+    function fillWildcardLetter(col, row) {
+      if (rules.gameMode === "free") {
+        const emptyIdx = state.collectedSlots.findIndex(s => s === "");
+        if (emptyIdx !== -1) {
+          // Isi dengan vokal serbaguna 'A'
+          state.collectedSlots[emptyIdx] = "A";
+          playSound("letter_ok");
+          spawnParticles(col, row, "#facc15", 18);
+          spawnFloatingText(col, row, "★ JOKER -> A", "#facc15");
+          checkWordCompletion(col, row);
+          updateHUD();
+        }
+        return;
+      }
+
+      const target = state.currentWordObj.word.split("");
+      const emptyIdx = state.collectedSlots.findIndex(s => s === "");
+      if (emptyIdx !== -1) {
+        state.collectedSlots[emptyIdx] = target[emptyIdx];
+        state.score += 30;
+        playSound("letter_ok");
+        spawnParticles(col, row, "#facc15", 18);
+        spawnFloatingText(col, row, `★ JOKER [${target[emptyIdx]}]`, "#facc15");
+        checkWordCompletion(col, row);
+        updateHUD();
+      }
+    }
+
+    function processCollectedLetter(ch, col, row) {
+      if (rules.gameMode === "free") {
+        const emptyIdx = state.collectedSlots.findIndex(s => s === "");
+        if (emptyIdx !== -1) {
+          state.collectedSlots[emptyIdx] = ch;
+          state.score += 15;
+          playSound("letter_ok");
+          spawnParticles(col, row, "#38bdf8", 12);
+          spawnFloatingText(col, row, `+${ch}`, "#38bdf8");
+          checkWordCompletion(col, row);
+          updateHUD();
+        }
+        return;
+      }
+
+      // Mode Target Kata (Quest)
+      const target = state.currentWordObj.word.split("");
+      let matchedIndex = -1;
+
+      if (rules.orderRule === "strict") {
+        const nextEmpty = state.collectedSlots.findIndex(s => s === "");
+        if (nextEmpty !== -1 && target[nextEmpty] === ch) {
+          matchedIndex = nextEmpty;
+        }
+      } else {
+        for (let i = 0; i < 4; i++) {
+          if (state.collectedSlots[i] === "" && target[i] === ch) {
+            matchedIndex = i;
+            break;
+          }
+        }
+      }
+
+      if (matchedIndex !== -1) {
+        state.collectedSlots[matchedIndex] = ch;
+        state.score += 25;
+        playSound("letter_ok");
+        spawnParticles(col, row, "#10b981", 15);
+        spawnFloatingText(col, row, `✓ ${ch} (+25)`, "#34d399");
+        checkWordCompletion(col, row);
+        refreshExistingRowLetters();
+      } else {
+        // Salah ambil huruf!
+        playSound("wrong");
+        spawnParticles(col, row, "#ef4444", 12);
+        if ( rules.penaltyRule === "life" && state.shieldTimer <= 0 ) {
+          state.lives -= 1;
+          spawnFloatingText(col, row, `✗ ${ch} (-1 ❤️)`, "#f87171");
+          showToast(`Huruf '${ch}' tidak cocok! -1 Nyawa`, "text-rose-400");
+          if (state.lives <= 0) {
+            triggerGameOver(`Kamu mengambil huruf '${ch}' yang salah hingga kehabisan nyawa.`);
+          }
+        } else {
+          state.score = Math.max(0, state.score - 15);
+          spawnFloatingText(col, row, `✗ ${ch} (-15 Poin)`, "#fbbf24");
+          showToast(`Huruf '${ch}' bukan bagian kata target!`, "text-amber-300");
+        }
+      }
+      updateHUD();
+    }
+
+    function checkWordCompletion(col, row) {
+      if (state.collectedSlots.some(s => s === "")) return;
+
+      const formedWord = state.collectedSlots.join("");
+      if (rules.gameMode === "free") {
+        if (EXTRA_VALID_4_WORDS.has(formedWord)) {
+          completeWordSuccess(formedWord, col, row, 120);
+        } else {
+          // Tetap beri bonus kombinasi 4 huruf tapi lebih kecil
+          completeWordSuccess(formedWord, col, row, 70);
+        }
+      } else {
+        completeWordSuccess(formedWord, col, row, 100);
+      }
+    }
+
+    function completeWordSuccess(word, col, row, bonus) {
+      state.score += bonus;
+      state.wordsCompleted += 1;
+      state.completedWords.push(word);
+      state.shieldTimer = 4.0; // Kebal 4 detik (Word Fever!)
+      playSound("word_complete");
+      spawnParticles(col, row, "#facc15", 32);
+      spawnFloatingText(col, row, `🎉 ${word}! +${bonus}`, "#facc15");
+      showToast(`KATA TERBENTUK: "${word}" (+${bonus} Poin & Perisai 4 Detik!)`, "text-amber-300");
+
+      if (rules.gameMode === "quest") {
+        pickNextTargetWord();
+      } else {
+        state.collectedSlots = ["", "", "", ""];
+        updateHUD();
+      }
+    }
+
+    // ==========================================
+    // KONTROL LOMPAT KARAKTER VOXEL
+    // ==========================================
+    function tryJump(dCol, dRow, facingDir) {
+      if (state.gameOver || state.paused) return;
+      if (state.player.jumping) return;
+
+      const targetCol = state.player.col + dCol;
+      const targetRow = state.player.row + dRow;
+
+      if (targetCol < 0 || targetCol >= COLS) return;
+      if (targetRow < Math.floor(state.cameraRow) - 1) return;
+
+      state.player.jumping = true;
+      state.player.jumpProgress = 0;
+      state.player.startCol = state.player.col;
+      state.player.startRow = state.player.row;
+      state.player.targetCol = targetCol;
+      state.player.targetRow = targetRow;
+      state.player.facing = facingDir;
+
+      // Pastikan baris di depan sudah digenerate
+      for (let r = targetRow - 2; r <= targetRow + VISIBLE_ROWS; r++) {
+        if (r >= 0) generateRow(r);
+      }
+
+      playSound("jump");
+    }
+
+    function triggerGameOver(reasonText) {
+      state.gameOver = true;
+      playSound("hit");
+      document.getElementById("gameOverReason").textContent = reasonText;
+      document.getElementById("finalScoreText").textContent = state.score;
+      document.getElementById("finalWordsText").textContent = state.wordsCompleted;
+
+      const listEl = document.getElementById("completedWordsList");
+      if (state.completedWords.length > 0) {
+        listEl.innerHTML = `Kata berhasil dirangkai: <strong class="text-emerald-300">${state.completedWords.join(", ")}</strong>`;
+      } else {
+        listEl.textContent = "Belum ada kata 4 huruf yang selesai dirangkai.";
+      }
+
+      document.getElementById("gameOverModal").classList.remove("hidden");
+    }
+
+    // ==========================================
+    // UPDATE HUD & UI
+    // ==========================================
+    function updateHUD() {
+      document.getElementById("scoreDisplay").textContent = state.score;
+      document.getElementById("wordsCountDisplay").textContent = state.wordsCompleted;
+      document.getElementById("livesDisplay").textContent =
+        state.lives > 0 ? "❤️".repeat(state.lives) : "💀";
+
+      const modeBadge = document.getElementById("modeBadge");
+      const orderBadge = document.getElementById("orderBadge");
+      const clueEl = document.getElementById("wordClueText");
+
+      if (rules.gameMode === "quest") {
+        modeBadge.textContent = "Mode Target Kata";
+        orderBadge.textContent = rules.orderRule === "strict" ? "Urutan: Harus 1→4" : "Urutan: Bebas";
+        clueEl.innerHTML = `Petunjuk: <strong class="text-amber-300">${state.currentWordObj.clue}</strong>`;
+      } else {
+        modeBadge.textContent = "Mode Rangkai Bebas";
+        orderBadge.textContent = "4 Huruf Apa Saja";
+        clueEl.innerHTML = `Ambil <strong class="text-emerald-300">4 huruf apa pun</strong> untuk membentuk kata 4 huruf!`;
+      }
+
+      const targetChars = state.currentWordObj.word.split("");
+      for (let i = 0; i < 4; i++) {
+        const slotEl = document.getElementById(`slot${i}`);
+        const collected = state.collectedSlots[i];
+        if (collected) {
+          slotEl.textContent = collected;
+          slotEl.className =
+            "letter-slot filled w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-emerald-500 border-2 border-emerald-300 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl text-slate-950";
+        } else {
+          // Tampilkan bayangan huruf tipis di mode quest agar mudah dipahami
+          slotEl.textContent = rules.gameMode === "quest" ? targetChars[i] : "_";
+          slotEl.className =
+            "letter-slot w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-slate-800/90 border-2 border-slate-600 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl " +
+            (rules.gameMode === "quest" ? "text-slate-500/70" : "text-slate-400");
+        }
+      }
+
+      // Riwayat kata di footer
+      const historyEl = document.getElementById("wordHistoryPills");
+      if (state.completedWords.length === 0) {
+        historyEl.innerHTML = `<span class="text-slate-500 italic">Lompat ke kubus huruf untuk mulai merangkai!</span>`;
+      } else {
+        historyEl.innerHTML = state.completedWords
+          .slice(-8)
+          .map(
+            w =>
+              `<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-display font-bold text-xs">${w}</span>`
+          )
+          .join("");
+      }
+    }
+
+    // ==========================================
+    // RENDERER 2.5D VOXEL ISOMETRIK DI CANVAS
+    // ==========================================
+    function resizeCanvas() {
+      const wrapper = document.getElementById("canvasWrapper");
+      const rect = wrapper.getBoundingClientRect();
+      canvas.width = Math.max(320, Math.floor(rect.width));
+      canvas.height = Math.max(320, Math.floor(rect.height));
+    }
+
+    // Fungsi menggambar balok 3D Voxel (Atas, Depan, Samping)
+    function drawVoxelCube(x, y, w, h, depth, topColor, frontColor, sideColor, strokeColor = "rgba(15,23,42,0.45)") {
+      // Sisi Depan (bawah)
+      ctx.fillStyle = frontColor;
+      ctx.fillRect(x, y, w, depth);
+
+      // Permukaan Atas (digeser ke atas sejauh tinggi balok)
+      ctx.fillStyle = topColor;
+      ctx.fillRect(x, y - h, w, h);
+
+      // Highlight tepi atas
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x, y - h, w, h);
+    }
+
+    function isLetterHighlighted(char) {
+      if (rules.highlightHint === "off" || rules.gameMode === "free") return false;
+      const needed = getNeededLetters();
+      return needed.includes(char);
+    }
+
+    function updateGame(dt) {
+      if (state.gameOver || state.paused) return;
+
+      if (state.shieldTimer > 0) {
+        state.shieldTimer = Math.max(0, state.shieldTimer - dt);
+      }
+
+      // Animasi lompat karakter
+      if (state.player.jumping) {
+        state.player.jumpProgress += dt * 6.8;
+        if (state.player.jumpProgress >= 1) {
+          state.player.jumping = false;
+          state.player.jumpProgress = 0;
+          state.player.col = state.player.targetCol;
+          state.player.row = state.player.targetRow;
+          state.player.renderX = state.player.col;
+          state.player.renderY = state.player.row;
+          state.player.jumpZ = 0;
+
+          // Skor maju
+          if (state.player.row > state.player.startRow) {
+            state.score += 2;
+          }
+
+          // Cek petak tempat mendarat
+          const rowData = generateRow(state.player.row);
+          const tile = rowData.tiles[state.player.col];
+          if (tile) {
+            if (tile.state === "fallen") {
+              triggerGameOver("Kamu melompat ke lubang lantai voxel yang sudah runtuh!");
+              return;
+            }
+            handleCollectItem(tile, state.player.col, state.player.row);
+          }
+          updateHUD();
+        } else {
+          const p = state.player.jumpProgress;
+          state.player.renderX = state.player.startCol + (state.player.targetCol - state.player.startCol) * p;
+          state.player.renderY = state.player.startRow + (state.player.targetRow - state.player.startRow) * p;
+          state.player.jumpZ = Math.sin(p * Math.PI) * 0.95;
+        }
+      }
+
+      // Kamera mengikuti baris pemain secara mulus
+      const targetCam = Math.max(0, state.player.renderY - 2.3);
+      state.cameraRow += (targetCam - state.cameraRow) * Math.min(1, dt * 6.5);
+      // Kamera juga bergerak pelan ke depan agar tetap seru
+      if (state.player.row >= 2) {
+        state.cameraRow += dt * 0.22;
+        if (state.player.renderY < state.cameraRow - 1.1) {
+          triggerGameOver("Kamu tertinggal oleh pergeseran layar!");
+          return;
+        }
+      }
+
+      // Update lantai runtuh (crumble) & rintangan bergerak
+      const minRow = Math.max(0, Math.floor(state.cameraRow) - 2);
+      const maxRow = Math.floor(state.cameraRow) + VISIBLE_ROWS;
+
+      for (let r = minRow; r <= maxRow; r++) {
+        const rowData = generateRow(r);
+
+        // Cek lantai retak jika diinjak
+        if (!state.player.jumping && state.player.row === r) {
+          const currentTile = rowData.tiles[state.player.col];
+          if (currentTile && currentTile.type === "crumble" && currentTile.state === "solid") {
+            currentTile.state = "cracking";
+            currentTile.crumbleTimer = 1.15;
+          }
+        }
+
+        rowData.tiles.forEach(tile => {
+          if (tile.state === "cracking") {
+            tile.crumbleTimer -= dt;
+            if (tile.crumbleTimer <= 0) {
+              tile.state = "fallen";
+              if (!state.player.jumping && state.player.row === r && state.player.col === tile.col) {
+                triggerGameOver("Lantai es/magma di bawah kakimu runtuh! Lompat lebih cepat.");
+              }
+            }
+          }
+        });
+
+        // Update robot duri di baris jalan
+        rowData.obstacles.forEach(obs => {
+          obs.x += obs.dir * obs.speed * dt;
+          if (obs.dir > 0 && obs.x > COLS + 0.5) obs.x = -0.5;
+          if (obs.dir < 0 && obs.x < -0.5) obs.x = COLS + 0.5;
+
+          // Deteksi tabrakan dengan pemain (jika tidak sedang di puncak lompatan atau perisai aktif)
+          const sameRow = Math.abs(state.player.renderY - r) < 0.42;
+          const sameCol = Math.abs(state.player.renderX - obs.x) < 0.52;
+          if (sameRow && sameCol && state.player.jumpZ < 0.55) {
+            if (state.shieldTimer > 0) {
+              // Hancurkan rintangan saat mode perisai
+              obs.x = -99;
+              spawnParticles(state.player.renderX, r, "#facc15", 15);
+              spawnFloatingText(state.player.renderX, r, "PERISAI!", "#facc15");
+            } else {
+              state.lives -= 1;
+              playSound("hit");
+              spawnParticles(state.player.renderX, r, "#f43f5e", 22);
+              state.shieldTimer = 1.6; // Kebal sesaat setelah tertabrak
+              updateHUD();
+              if (state.lives <= 0) {
+                triggerGameOver("Karaktermu tertabrak Robot Duri Merah!");
+              } else {
+                showToast("Aduh! Tertabrak Robot Duri (-1 ❤️)", "text-rose-400");
+              }
+            }
+          }
+        });
+      }
+
+      // Update partikel voxel
+      state.particles.forEach(p => {
+        p.col += p.vx;
+        p.row += p.vy;
+        p.z += p.vz * dt;
+        p.vz -= 9.8 * dt;
+        p.life -= dt * 1.6;
+      });
+      state.particles = state.particles.filter(p => p.life > 0);
+
+      // Update teks melayang
+      state.floatingTexts.forEach(ft => {
+        ft.z += dt * 1.4;
+        ft.life -= dt * 1.1;
+      });
+      state.floatingTexts = state.floatingTexts.filter(ft => ft.life > 0);
+    }
+
+    function renderGame(timestamp) {
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Latar belakang langit malam berbintang halus
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+      bgGrad.addColorStop(0, "#090d16");
+      bgGrad.addColorStop(1, "#1e293b");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Hitung ukuran petak voxel agar proporsional di semua layar
+      const tileW = Math.min(Math.floor((W * 0.86) / COLS), 68);
+      const tileH = Math.floor(tileW * 0.72);
+      const tileDepth = Math.max(10, Math.floor(tileH * 0.34));
+      const boardWidth = tileW * COLS;
+      const startX = Math.floor((W - boardWidth) / 2);
+      const baseScreenY = H - Math.floor(tileH * 2.1);
+
+      function worldToScreen(col, row, z = 0) {
+        const relRow = row - state.cameraRow;
+        // Sedikit kemiringan isometrik semu agar nuansa 3D voxel terasa kental
+        const isoSkew = (relRow - 3) * 2.2;
+        const sx = startX + col * tileW + isoSkew;
+        const sy = baseScreenY - relRow * tileH - z * (tileH * 0.9);
+        return { x: sx, y: sy };
+      }
+
+      const minRow = Math.max(0, Math.floor(state.cameraRow) - 1);
+      const maxRow = Math.floor(state.cameraRow) + VISIBLE_ROWS;
+
+      // Gambar dari baris paling jauh (atas layar) ke baris paling dekat (bawah layar) untuk efek tumpukan 3D
+      for (let r = maxRow; r >= minRow; r--) {
+        const rowData = generateRow(r);
+
+        // 1. Gambar Petak Lantai Voxel
+        for (let c = 0; c < COLS; c++) {
+          const tile = rowData.tiles[c];
+          if (tile.state === "fallen") continue;
+
+          const pos = worldToScreen(c, r, 0);
+          let topCol = "#1e293b";
+          let frontCol = "#0f172a";
+
+          if (tile.type === "grass") {
+            topCol = (r + c) % 2 === 0 ? "#10b981" : "#059669";
+            frontCol = "#047857";
+          } else if (tile.type === "road") {
+            topCol = (r + c) % 2 === 0 ? "#334155" : "#475569";
+            frontCol = "#1e293b";
+          } else if (tile.type === "crumble") {
+            if (tile.state === "cracking") {
+              topCol = "#f97316";
+              frontCol = "#c2410c";
+            } else {
+              topCol = (r + c) % 2 === 0 ? "#38bdf8" : "#0284c7";
+              frontCol = "#0369a1";
+            }
+          }
+
+          const shakeX = tile.state === "cracking" ? (Math.random() - 0.5) * 4 : 0;
+          drawVoxelCube(
+            pos.x + shakeX,
+            pos.y,
+            tileW - 2,
+            tileH - 2,
+            tileDepth,
+            topCol,
+            frontCol,
+            frontCol
+          );
+
+          // 2. Gambar Blok Huruf / Power-up di atas Petak
+          if (tile.item) {
+            const bob = Math.sin(timestamp * 0.005 + tile.item.bobOffset) * 0.14 + 0.25;
+            const itemPos = worldToScreen(c + 0.16, r, bob);
+            const boxW = Math.floor(tileW * 0.66);
+            const boxH = Math.floor(tileH * 0.66);
+            const boxDepth = Math.floor(tileDepth * 0.85);
+
+            // Bayangan di lantai
+            ctx.fillStyle = "rgba(0,0,0,0.32)";
+            ctx.beginPath();
+            ctx.ellipse(
+              pos.x + tileW * 0.48,
+              pos.y - tileH * 0.45,
+              boxW * 0.36,
+              boxH * 0.22,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.fill();
+
+            let cubeTop = "#f8fafc";
+            let cubeFront = "#cbd5e1";
+            let textColor = "#0f172a";
+
+            if (tile.item.type === "wildcard") {
+              cubeTop = "#fde047";
+              cubeFront = "#ca8a04";
+              textColor = "#422006";
+            } else if (tile.item.type === "heart") {
+              cubeTop = "#fda4af";
+              cubeFront = "#e11d48";
+              textColor = "#881337";
+            } else if (isLetterHighlighted(tile.item.char)) {
+              cubeTop = "#6ee7b7";
+              cubeFront = "#059669";
+              textColor = "#022c22";
+            }
+
+            drawVoxelCube(
+              itemPos.x,
+              itemPos.y,
+              boxW,
+              boxH,
+              boxDepth,
+              cubeTop,
+              cubeFront,
+              cubeFront,
+              "rgba(15,23,42,0.6)"
+            );
+
+            ctx.fillStyle = textColor;
+            ctx.font = `800 ${Math.floor(boxH * 0.68)}px "Space Grotesk", sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(
+              tile.item.char,
+              itemPos.x + boxW / 2,
+              itemPos.y - boxH / 2 + 1
+            );
+          }
+        }
+
+        // 3. Gambar Rintangan Robot Duri Voxel di Baris Ini
+        rowData.obstacles.forEach(obs => {
+          if (obs.x < -1 || obs.x > COLS + 1) return;
+          const obsPos = worldToScreen(obs.x + 0.12, r, 0.12);
+          const obsW = Math.floor(tileW * 0.72);
+          const obsH = Math.floor(tileH * 0.68);
+          drawVoxelCube(
+            obsPos.x,
+            obsPos.y,
+            obsW,
+            obsH,
+            Math.floor(tileDepth * 1.1),
+            "#f43f5e",
+            "#be123c",
+            "#9f1239"
+          );
+          // Mata robot
+          ctx.fillStyle = "#fef08a";
+          ctx.fillRect(obsPos.x + obsW * 0.2, obsPos.y - obsH * 0.65, 5, 5);
+          ctx.fillRect(obsPos.x + obsW * 0.65, obsPos.y - obsH * 0.65, 5, 5);
+        });
+
+        // 4. Gambar Karakter Pemain Voxel jika berada di baris ini
+        if (Math.round(state.player.renderY) === r) {
+          const pShadow = worldToScreen(state.player.renderX, state.player.renderY, 0);
+          ctx.fillStyle = "rgba(0,0,0,0.4)";
+          ctx.beginPath();
+          ctx.ellipse(
+            pShadow.x + tileW * 0.48,
+            pShadow.y - tileH * 0.48,
+            tileW * 0.32 * (1 - state.player.jumpZ * 0.35),
+            tileH * 0.2 * (1 - state.player.jumpZ * 0.35),
+            0,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+
+          const pPos = worldToScreen(
+            state.player.renderX + 0.14,
+            state.player.renderY,
+            state.player.jumpZ + 0.15
+          );
+          const pW = Math.floor(tileW * 0.7);
+          const pH = Math.floor(tileH * 0.75);
+          const pDepth = Math.floor(tileDepth * 1.25);
+
+          // Efek aura perisai jika aktif
+          if (state.shieldTimer > 0) {
+            ctx.strokeStyle = "#fde047";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(pPos.x + pW / 2, pPos.y - pH / 2, pW * 0.68, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          drawVoxelCube(
+            pPos.x,
+            pPos.y,
+            pW,
+            pH,
+            pDepth,
+            "#38bdf8",
+            "#0284c7",
+            "#0369a1",
+            "#e0f2fe"
+          );
+
+          // Wajah Karakter Voxel yang imut
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(pPos.x + pW * 0.24, pPos.y - pH * 0.62, 5, 6);
+          ctx.fillRect(pPos.x + pW * 0.64, pPos.y - pH * 0.62, 5, 6);
+          ctx.fillStyle = "#f472b6";
+          ctx.fillRect(pPos.x + pW * 0.15, pPos.y - pH * 0.42, 5, 3);
+          ctx.fillRect(pPos.x + pW * 0.72, pPos.y - pH * 0.42, 5, 3);
+        }
+      }
+
+      // 5. Gambar Partikel Voxel
+      state.particles.forEach(p => {
+        const ptPos = worldToScreen(p.col + 0.4, p.row, p.z);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillRect(ptPos.x, ptPos.y, 6, 6);
+      });
+      ctx.globalAlpha = 1;
+
+      // 6. Gambar Teks Melayang
+      state.floatingTexts.forEach(ft => {
+        const ftPos = worldToScreen(ft.col + 0.5, ft.row, ft.z);
+        ctx.font = '800 14px "Space Grotesk", sans-serif';
+        ctx.textAlign = "center";
+        ctx.fillStyle = ft.color;
+        ctx.globalAlpha = Math.max(0, ft.life);
+        ctx.fillText(ft.text, ftPos.x, ftPos.y);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function gameLoop(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+
+      updateGame(dt);
+      renderGame(timestamp);
+
+      animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // ==========================================
+    // RESET & INISIALISASI PERMAINAN
+    // ==========================================
+    function startNewGame() {
+      state.score = 0;
+      state.lives = 3;
+      state.wordsCompleted = 0;
+      state.completedWords = [];
+      state.gameOver = false;
+      state.paused = false;
+      state.shieldTimer = 0;
+      state.rows.clear();
+      state.particles = [];
+      state.floatingTexts = [];
+
+      state.player = {
+        col: 3,
+        row: 1,
+        renderX: 3,
+        renderY: 1,
+        jumpZ: 0,
+        jumping: false,
+        jumpProgress: 0,
+        startCol: 3,
+        startRow: 1,
+        targetCol: 3,
+        targetRow: 1,
+        facing: "up"
+      };
+      state.cameraRow = 0;
+
+      for (let r = 0; r <= VISIBLE_ROWS + 3; r++) {
+        generateRow(r);
+      }
+
+      pickNextTargetWord();
+      document.getElementById("gameOverModal").classList.add("hidden");
+      updateHUD();
+    }
+
+    // ==========================================
+    // EVENT LISTENERS (KEYBOARD, TOUCH, KLIK, UI)
+    // ==========================================
+    window.addEventListener("keydown", e => {
+      if (state.gameOver || state.paused) return;
+      const key = e.key.toLowerCase();
+      if (key === "arrowup" || key === "w" || key === " ") {
+        e.preventDefault();
+        tryJump(0, 1, "up");
+      } else if (key === "arrowdown" || key === "s") {
+        e.preventDefault();
+        tryJump(0, -1, "down");
+      } else if (key === "arrowleft" || key === "a") {
+        e.preventDefault();
+        tryJump(-1, 0, "left");
+      } else if (key === "arrowright" || key === "d") {
+        e.preventDefault();
+        tryJump(1, 0, "right");
+      }
+    });
+
+    document.getElementById("btnUp").addEventListener("click", () => tryJump(0, 1, "up"));
+    document.getElementById("btnDown").addEventListener("click", () => tryJump(0, -1, "down"));
+    document.getElementById("btnLeft").addEventListener("click", () => tryJump(-1, 0, "left"));
+    document.getElementById("btnRight").addEventListener("click", () => tryJump(1, 0, "right"));
+
+    // Klik langsung di area canvas untuk melompat ke arah klik
+    canvas.addEventListener("pointerdown", e => {
+      if (state.gameOver || state.paused) return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Bandingkan dengan posisi layar karakter saat ini
+      const W = canvas.width;
+      const H = canvas.height;
+      const tileW = Math.min(Math.floor((W * 0.86) / COLS), 68);
+      const tileH = Math.floor(tileW * 0.72);
+      const boardWidth = tileW * COLS;
+      const startX = Math.floor((W - boardWidth) / 2);
+      const baseScreenY = H - Math.floor(tileH * 2.1);
+      const relRow = state.player.renderY - state.cameraRow;
+      const px = startX + (state.player.renderX + 0.5) * tileW;
+      const py = baseScreenY - (relRow + 0.5) * tileH;
+
+      const dx = clickX - px;
+      const dy = clickY - py;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0) tryJump(1, 0, "right");
+        else tryJump(-1, 0, "left");
+      } else {
+        if (dy < 0) tryJump(0, 1, "up");
+        else tryJump(0, -1, "down");
+      }
+    });
+
+    document.getElementById("btnSkipWord").addEventListener("click", () => {
+      initAudio();
+      if (rules.gameMode === "quest") {
+        pickNextTargetWord();
+        showToast("Kata target diganti!", "text-cyan-300");
+      } else {
+        state.collectedSlots = ["", "", "", ""];
+        updateHUD();
+        showToast("Slot huruf direset!", "text-cyan-300");
+      }
+    });
+
+    document.getElementById("btnSoundToggle").addEventListener("click", e => {
+      soundEnabled = !soundEnabled;
+      e.currentTarget.textContent = soundEnabled ? "🔊" : "🔇";
+    });
+
+    document.getElementById("btnRestartGame").addEventListener("click", () => {
+      initAudio();
+      startNewGame();
+    });
+
+    // Modal Aturan & Kustomisasi
+    document.getElementById("btnRulesModal").addEventListener("click", () => {
+      state.paused = true;
+      document.getElementById("rulesModal").classList.remove("hidden");
+    });
+
+    document.getElementById("btnCloseRules").addEventListener("click", () => {
+      state.paused = false;
+      document.getElementById("rulesModal").classList.add("hidden");
+    });
+
+    document.getElementById("btnApplyRules").addEventListener("click", () => {
+      rules.gameMode = document.getElementById("selectGameMode").value;
+      rules.orderRule = document.getElementById("selectOrderRule").value;
+      rules.penaltyRule = document.getElementById("selectPenaltyRule").value;
+      rules.highlightHint = document.getElementById("selectHighlightHint").value;
+      state.paused = false;
+      document.getElementById("rulesModal").classList.add("hidden");
+      startNewGame();
+      showToast("Aturan baru berhasil diterapkan!", "text-emerald-300");
+    });
+
+    window.addEventListener("resize", () => {
+      resizeCanvas();
+    });
+
+    window.onload = () => {
+      resizeCanvas();
+      startNewGame();
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      animFrameId = requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
