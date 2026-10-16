@@ -25,6 +25,7 @@ function startNewGame() {
   state.completedWords = [];
   state.gameOver = false;
   state.paused = false;
+  state.wordSuccessPaused = false;
   state.shieldTimer = 0;
   state.rows.clear();
   state.particles = [];
@@ -53,7 +54,13 @@ function startNewGame() {
 
   pickNextTargetWord();
   document.getElementById("gameOverModal").classList.add("hidden");
+  const successModal = document.getElementById("wordSuccessModal");
+  if (successModal) successModal.classList.add("hidden");
+
   updateHUD();
+  if (bgmEnabled && audioUnlocked) {
+    startBGM();
+  }
 }
 
 // ==========================================
@@ -61,7 +68,29 @@ function startNewGame() {
 // ==========================================
 window.addEventListener("keydown", e => {
   if (state.gameOver || state.paused) return;
+
+  // 3. ANTI KEPENCET TIDAK SENGAJA saat Pop Up Sukses Kata Tampil
+  // Pop up ditutup HANYA lewat tombol Lanjut atau tombol Enter.
+  // Tombol spasi dan panah TIDAK menutup pop up dan TIDAK menggerakkan slime.
+  if (state.wordSuccessPaused) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (typeof proceedToNextWord === "function") {
+        proceedToNextWord();
+      }
+    } else if (e.key === " " || e.key.startsWith("Arrow") || ["w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+      e.preventDefault();
+    }
+    return;
+  }
+
   const key = e.key.toLowerCase();
+  if (key === "p") {
+    unlockAudio();
+    const testWord = state.currentWordObj ? state.currentWordObj.word : "MEJA";
+    completeWordSuccess(testWord, state.player.col, state.player.row, 100);
+    return;
+  }
   if (key === "arrowup" || key === "w" || key === " ") {
     e.preventDefault();
     tryJump(0, 1, "up");
@@ -84,7 +113,7 @@ document.getElementById("btnRight").addEventListener("click", () => tryJump(1, 0
 
 // Klik langsung di area canvas untuk melompat ke arah klik (koordinat akurat sesuai getBoardMetrics)
 canvas.addEventListener("pointerdown", e => {
-  if (state.gameOver || state.paused) return;
+  if (state.gameOver || state.paused || state.wordSuccessPaused) return;
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
@@ -106,8 +135,38 @@ canvas.addEventListener("pointerdown", e => {
   }
 });
 
+// Tombol Pop Up Sukses Rangkai Kata
+const btnNextWord = document.getElementById("btnNextWord");
+if (btnNextWord) {
+  btnNextWord.addEventListener("click", () => {
+    if (typeof proceedToNextWord === "function") {
+      proceedToNextWord();
+    }
+  });
+}
+
+const btnHearWord = document.getElementById("btnHearWord");
+if (btnHearWord) {
+  btnHearWord.addEventListener("click", () => {
+    if (typeof speakWord === "function") {
+      speakWord();
+    }
+  });
+}
+
+// Event untuk menguji perayaan kata (klik slot terakhir atau tekan P)
+const slot3El = document.getElementById("slot3");
+if (slot3El) {
+  slot3El.style.cursor = "pointer";
+  slot3El.addEventListener("click", () => {
+    unlockAudio();
+    const testWord = state.currentWordObj ? state.currentWordObj.word : "MEJA";
+    completeWordSuccess(testWord, state.player.col, state.player.row, 100);
+  });
+}
+
 document.getElementById("btnSkipWord").addEventListener("click", () => {
-  initAudio();
+  unlockAudio();
   if (rules.gameMode === "quest") {
     pickNextTargetWord();
     showToast("Kata target diganti!", "text-cyan-600");
@@ -118,13 +177,20 @@ document.getElementById("btnSkipWord").addEventListener("click", () => {
   }
 });
 
-document.getElementById("btnSoundToggle").addEventListener("click", e => {
-  soundEnabled = !soundEnabled;
-  e.currentTarget.textContent = soundEnabled ? "🔊" : "🔇";
-});
+// Tombol Musik Latar
+const btnMusic = document.getElementById("btnMusicToggle");
+if (btnMusic) {
+  btnMusic.addEventListener("click", () => toggleBGM());
+}
+
+// Tombol Efek Suara & Suara Baca
+const btnSound = document.getElementById("btnSoundToggle");
+if (btnSound) {
+  btnSound.addEventListener("click", () => toggleSFX());
+}
 
 document.getElementById("btnRestartGame").addEventListener("click", () => {
-  initAudio();
+  unlockAudio();
   startNewGame();
 });
 
@@ -207,6 +273,7 @@ window.addEventListener("resize", () => {
 
 window.onload = () => {
   resizeCanvas();
+  updateAudioUI();
   startNewGame();
   if (animFrameId) cancelAnimationFrame(animFrameId);
   animFrameId = requestAnimationFrame(gameLoop);

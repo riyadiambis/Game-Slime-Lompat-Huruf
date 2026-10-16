@@ -1,72 +1,7 @@
 // ==========================================
-// WEB AUDIO SYNTHESIZER (TANPA FILE EKSTERNAL)
+// GAME LOGIC & VOXEL ENGINE
+// Audio & Speech Synthesis dikelola secara modular oleh js/audio.js
 // ==========================================
-let audioCtx = null;
-let soundEnabled = true;
-
-function initAudio() {
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
-    }
-  }
-  if (audioCtx && audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-}
-
-function playSound(type) {
-  if (!soundEnabled) return;
-  initAudio();
-  if (!audioCtx) return;
-
-  const now = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  if (type === "jump") {
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(240, now);
-    osc.frequency.exponentialRampToValueAtTime(460, now + 0.09);
-    gain.gain.setValueAtTime(0.14, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-    osc.start(now);
-    osc.stop(now + 0.1);
-  } else if (type === "letter_ok") {
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(523.25, now); // C5
-    osc.frequency.setValueAtTime(659.25, now + 0.06); // E5
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
-    osc.start(now);
-    osc.stop(now + 0.18);
-  } else if (type === "word_complete") {
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((freq, idx) => {
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = "triangle";
-      o.connect(g);
-      g.connect(audioCtx.destination);
-      o.frequency.setValueAtTime(freq, now + idx * 0.06);
-      g.gain.setValueAtTime(0.22, now + idx * 0.06);
-      g.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.06 + 0.22);
-      o.start(now + idx * 0.06);
-      o.stop(now + idx * 0.06 + 0.22);
-    });
-  } else if (type === "wrong" || type === "hit") {
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(190, now);
-    osc.frequency.linearRampToValueAtTime(95, now + 0.2);
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-    osc.start(now);
-    osc.stop(now + 0.22);
-  }
-}
 
 // ==========================================
 // KONFIGURASI & STATE GAME VOXEL
@@ -88,6 +23,7 @@ let state = {
   completedWords: [],
   gameOver: false,
   paused: false,
+  wordSuccessPaused: false,
   currentWordObj: WORD_BANK[0],
   collectedSlots: ["", "", "", ""], // 4 slots
   pendingLetterRespawns: [], // antrean huruf yang harus muncul kembali setelah 2 detik
@@ -347,7 +283,7 @@ function handleCollectItem(tile, col, row) {
   if (item.type === "heart") {
     tile.item = null;
     state.lives = Math.min(3, state.lives + 1);
-    playSound("letter_ok");
+    playSFX("heart"); // Bunyi "pop" lembut
     spawnParticles(col, row, "#f43f5e", 16);
     spawnFloatingText(col, row, "+1 NYAWA ♥", "#fb7185");
     updateHUD();
@@ -367,6 +303,20 @@ function handleCollectItem(tile, col, row) {
   }
 }
 
+// Helper pembagian suku kata yang aman (jika audio.js belum siap atau standalone)
+function getWordSyllablesSafe(word) {
+  if (typeof getWordSyllables === "function") {
+    return getWordSyllables(word);
+  }
+  if (!word || word.length < 2) return [word, ""];
+  const w = word.toLowerCase();
+  const vowels = ["a", "i", "u", "e", "o"];
+  if (vowels.includes(w[0]) && !vowels.includes(w[1])) {
+    return [w.slice(0, 1), w.slice(1)];
+  }
+  return [w.slice(0, 2), w.slice(2)];
+}
+
 function fillWildcardLetter(col, row) {
   const targetChars = state.currentWordObj.word.split("");
   const currentSlotIndex = state.collectedSlots.findIndex(s => s === "");
@@ -374,8 +324,17 @@ function fillWildcardLetter(col, row) {
     const filledChar = targetChars[currentSlotIndex];
     state.collectedSlots[currentSlotIndex] = filledChar;
     state.score += 30;
-    playSound("letter_ok");
-    speakLetter(filledChar);
+    playSFX("star"); // Arpeggio 3 nada naik saat ambil bintang joker
+
+    // Suara baca sesuai posisi slot
+    if (currentSlotIndex === 1) {
+      // Saat slot 2 terisi: bacakan suku kata pertama (contoh: "E... me")
+      const [syl1] = getWordSyllablesSafe(state.currentWordObj.word);
+      speakLetterAndSyllable(filledChar, syl1);
+    } else {
+      speakLetter(filledChar);
+    }
+
     spawnParticles(col, row, "#facc15", 18);
     spawnFloatingText(col, row, `★ JOKER [${filledChar}]`, "#facc15");
     checkWordCompletion(col, row);
@@ -397,8 +356,17 @@ function processCollectedLetter(ch, col, row) {
     // ==========================================
     state.collectedSlots[currentSlotIndex] = ch;
     state.score += 25;
-    playSound("letter_ok");
-    speakLetter(ch); // Bacakan huruf secara audio
+    playSFX("letter_ok"); // "ting" ceria + gelembung pecah
+
+    // Suara baca: saat huruf benar diambil
+    if (currentSlotIndex === 1) {
+      // Saat slot 2 terisi: bacakan huruf & suku kata pertama (contoh MEJA: "me")
+      const [syl1] = getWordSyllablesSafe(state.currentWordObj.word);
+      speakLetterAndSyllable(ch, syl1);
+    } else {
+      speakLetter(ch); // Bacakan huruf
+    }
+
     spawnParticles(col, row, "#10b981", 16);
     spawnFloatingText(col, row, `✓ ${ch} (+25)`, "#34d399");
     checkWordCompletion(col, row);
@@ -408,11 +376,11 @@ function processCollectedLetter(ch, col, row) {
     // HURUF SALAH (bukan urutan berikutnya)
     // ==========================================
     // Slime memakan huruf itu (gelembung hilang)
-    // TIDAK mengurangi nyawa, TIDAK mengurangi skor, TIDAK ada bunyi
+    // TIDAK ADA BUNYI SAMA SEKALI (Aturan Belajar Ramah Anak)
+    // TIDAK mengurangi nyawa, TIDAK mengurangi skor
     spawnParticles(col, row, "#bae6fd", 8);
 
     // Cek apakah huruf yang dimakan masih dibutuhkan di slot berikutnya
-    // (misal makan J saat mencari M pada kata MEJA, atau huruf berulang pada SUSU)
     const remainingNeeded = targetChars.slice(currentSlotIndex);
     const isStillNeeded = remainingNeeded.includes(ch);
 
@@ -435,7 +403,6 @@ function checkWordCompletion(col, row) {
     if (EXTRA_VALID_4_WORDS.has(formedWord)) {
       completeWordSuccess(formedWord, col, row, 120);
     } else {
-      // Tetap beri bonus kombinasi 4 huruf tapi lebih kecil
       completeWordSuccess(formedWord, col, row, 70);
     }
   } else {
@@ -447,25 +414,145 @@ function completeWordSuccess(word, col, row, bonus) {
   state.score += bonus;
   state.wordsCompleted += 1;
   state.completedWords.push(word);
-  state.shieldTimer = 4.0; // Kebal 4 detik (Word Fever!)
-  playSound("word_complete");
+
+  if (typeof playSFX === "function") {
+    playSFX("word_complete"); // Jingle kemenangan 5 nada
+  }
+
+  // Suara baca kata lengkap jika modul suara aktif
+  if (typeof speakWordCelebration === "function") {
+    const [syl1, syl2] = getWordSyllablesSafe(word);
+    speakWordCelebration(word, syl1, syl2);
+  }
+
   spawnParticles(col, row, "#facc15", 32);
   spawnFloatingText(col, row, `🎉 ${word}! +${bonus}`, "#facc15");
-  showToast(`KATA TERBENTUK: "${word}" (+${bonus} Poin & Perisai 4 Detik!)`, "text-amber-300");
+  showToast(`KATA TERBENTUK: "${word}" (+${bonus} Poin!)`, "text-amber-300");
 
+  // Tampilkan Pop Up Sukses Kata & PAUSE TOTAL permainan
+  showWordSuccessModal(word);
+}
+
+// 5 Variasi judul acak ceria
+const CELEBRATION_TITLES = [
+  "Hebat! 🎉",
+  "Kamu Berhasil! ⭐",
+  "Luar Biasa! 🌟",
+  "Pintar Sekali! 👏",
+  "Keren Banget! 🚀"
+];
+
+let canProceedNextWord = false;
+let currentCelebrationWord = "";
+
+function showWordSuccessModal(word) {
+  currentCelebrationWord = word;
+  state.wordSuccessPaused = true;
+
+  const modal = document.getElementById("wordSuccessModal");
+  const titleEl = document.getElementById("successTitle");
+  const wordEl = document.getElementById("successWordText");
+  const syl1El = document.getElementById("syllablePill1");
+  const syl2El = document.getElementById("syllablePill2");
+  const btnNext = document.getElementById("btnNextWord");
+  const cooldownHint = document.getElementById("nextWordCooldownHint");
+
+  // 1. Judul acak ceria (4 sampai 5 variasi)
+  if (titleEl) {
+    const randomTitle = CELEBRATION_TITLES[Math.floor(Math.random() * CELEBRATION_TITLES.length)];
+    titleEl.textContent = randomTitle;
+  }
+
+  // 2. Kata ditulis BESAR di tengah
+  if (wordEl) {
+    wordEl.textContent = word.toUpperCase();
+  }
+
+  // 3. Dipecah per suku kata dengan warna berbeda
+  const [syl1, syl2] = getWordSyllablesSafe(word);
+  if (syl1El) syl1El.textContent = syl1.toUpperCase();
+  if (syl2El) syl2El.textContent = syl2.toUpperCase();
+
+  // 4. Anti-kepencet tidak sengaja: tombol Lanjut baru aktif 1 detik setelah pop up muncul (tampil redup dulu)
+  canProceedNextWord = false;
+  window.canProceedNextWord = false;
+  if (btnNext) {
+    btnNext.disabled = true;
+    btnNext.classList.add("opacity-50", "cursor-not-allowed");
+    btnNext.classList.remove("opacity-100", "cursor-pointer");
+  }
+  if (cooldownHint) {
+    cooldownHint.textContent = "Tunggu 1 detik...";
+    cooldownHint.classList.remove("opacity-0");
+  }
+
+  setTimeout(() => {
+    canProceedNextWord = true;
+    window.canProceedNextWord = true;
+    if (btnNext) {
+      btnNext.disabled = false;
+      btnNext.classList.remove("opacity-50", "cursor-not-allowed");
+      btnNext.classList.add("opacity-100", "cursor-pointer");
+    }
+    if (cooldownHint) {
+      cooldownHint.textContent = "Tekan tombol Lanjut atau Enter ↵";
+    }
+  }, 1000);
+
+  if (modal) {
+    modal.classList.remove("hidden");
+  }
+}
+
+function proceedToNextWord() {
+  if (!canProceedNextWord && !window.canProceedNextWord) return;
+
+  const modal = document.getElementById("wordSuccessModal");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+
+  // Unpause game
+  state.wordSuccessPaused = false;
+
+  // Slime diberi kebal 1,5 detik (berkedip transparan)
+  state.shieldTimer = 1.5;
+
+  // Kata baru dimulai, slot kata dikosongkan
   if (rules.gameMode === "quest") {
     pickNextTargetWord();
   } else {
     state.collectedSlots = ["", "", "", ""];
-    updateHUD();
   }
+  updateHUD();
 }
+
+// Fungsi dengar kata yang aman dipanggil
+window.speakWord = function(kata) {
+  const target = kata || currentCelebrationWord;
+  if (!target) return;
+  if (typeof speakWordCelebration === "function") {
+    const [syl1, syl2] = getWordSyllablesSafe(target);
+    speakWordCelebration(target, syl1, syl2);
+  } else if (typeof window.speechSynthesis !== "undefined") {
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(target);
+      u.lang = "id-ID";
+      u.rate = 0.8;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+};
+
+window.proceedToNextWord = proceedToNextWord;
+window.showWordSuccessModal = showWordSuccessModal;
 
 // ==========================================
 // KONTROL LOMPAT KARAKTER VOXEL
 // ==========================================
 function tryJump(dCol, dRow, facingDir) {
-  if (state.gameOver || state.paused) return;
+  if (state.gameOver || state.paused || state.wordSuccessPaused) return;
   if (state.player.jumping) return;
 
   const targetCol = state.player.col + dCol;
@@ -487,12 +574,12 @@ function tryJump(dCol, dRow, facingDir) {
     if (r >= 0) generateRow(r);
   }
 
-  playSound("jump");
+  playSFX("jump"); // "boing" kenyal khas slime
 }
 
 function triggerGameOver(reasonText) {
   state.gameOver = true;
-  playSound("hit");
+  playSFX("game_over"); // 3 nada turun pelan & stop BGM
   document.getElementById("gameOverReason").textContent = reasonText;
   document.getElementById("finalScoreText").textContent = state.score;
   document.getElementById("finalWordsText").textContent = state.wordsCompleted;
@@ -566,7 +653,7 @@ function updateHUD() {
 // UPDATE LOGIKA PERMAINAN (FISIKA, RINTANGAN, DLL)
 // ==========================================
 function updateGame(dt) {
-  if (state.gameOver || state.paused) return;
+  if (state.gameOver || state.paused || state.wordSuccessPaused) return;
 
   if (state.shieldTimer > 0) {
     state.shieldTimer = Math.max(0, state.shieldTimer - dt);
@@ -617,6 +704,7 @@ function updateGame(dt) {
       state.player.renderX = state.player.col;
       state.player.renderY = state.player.row;
       state.player.jumpZ = 0;
+      playSFX("land"); // "plop" pelan saat mendarat
 
       // Skor maju
       if (state.player.row > state.player.startRow) {
@@ -700,7 +788,7 @@ function updateGame(dt) {
           spawnFloatingText(state.player.renderX, r, "PERISAI!", "#facc15");
         } else {
           state.lives -= 1;
-          playSound("hit");
+          playSFX("hit"); // "dug" berat saat kena musuh
           spawnParticles(state.player.renderX, r, "#f43f5e", 22);
           state.shieldTimer = 1.6; // Kebal sesaat setelah tertabrak
           updateHUD();

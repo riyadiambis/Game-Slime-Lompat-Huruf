@@ -523,8 +523,12 @@ function drawPlayerSlime(pPos, pW, pH, timestamp) {
   ctx.translate(cx, cy);
   ctx.scale(scaleX, scaleY);
 
-  // 2. Efek Berkedip Merah saat terkena musuh
-  const isHurt = state.shieldTimer > 0 && state.lives < 3 && (Math.floor(timestamp / 90) % 2 === 0);
+  // 2. Efek Berkedip Transparan saat Kebal (Invulnerable) & Merah saat terkena musuh
+  const isInvulnerable = state.shieldTimer > 0;
+  const isHurt = isInvulnerable && state.lives < 3 && (Math.floor(timestamp / 90) % 2 === 0);
+  if (isInvulnerable && (Math.floor(timestamp / 90) % 2 === 0)) {
+    ctx.globalAlpha = 0.42;
+  }
 
   // 3. Badan Slime Jeli Biru Muda Transparan
   const slimeGrad = ctx.createRadialGradient(
