@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261016">
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col m-0 p-0 select-none">
 
@@ -217,7 +217,7 @@
 
       <!-- Rules Modal -->
       <div id="rulesModal" class="hidden absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white border-4 border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-[8px_8px_0_#1e293b]">
+        <div class="bg-white border-4 border-slate-800 rounded-3xl max-w-md w-full max-h-full overflow-y-auto p-6 shadow-[8px_8px_0_#1e293b]">
           <div class="flex items-center justify-between pb-3 border-b-2 border-slate-800">
             <h2 class="font-display font-extrabold text-lg text-slate-900">⚙️ Aturan Permainan</h2>
             <button id="btnCloseRules" type="button" class="text-slate-700 hover:text-slate-950 text-sm font-extrabold px-2.5 py-1 rounded-xl bg-slate-100 border-2 border-slate-800 shadow-[2px_2px_0_#1e293b]">✕</button>
@@ -260,6 +260,24 @@
                 <option value="on">Aktif (Papan Runtuh Saat Diinjak)</option>
               </select>
             </div>
+
+            <div>
+              <label class="block text-slate-800 font-bold mb-1">6. Kecepatan Monster</label>
+              <select id="selectMonsterSpeed" class="w-full bg-slate-50 border-2 border-slate-800 rounded-xl px-3 py-2 text-slate-900 font-bold focus:outline-none">
+                <option value="very_slow" selected>🐌 Sangat Pelan</option>
+                <option value="slow">🐢 Pelan</option>
+                <option value="normal">🐇 Sedang</option>
+                <option value="fast">🚀 Cepat</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-800 font-bold mb-1">7. Nyawa</label>
+              <select id="selectLivesMode" class="w-full bg-slate-50 border-2 border-slate-800 rounded-xl px-3 py-2 text-slate-900 font-bold focus:outline-none">
+                <option value="off" selected>Nonaktif (Tanpa Nyawa, Tidak Bisa Kalah oleh Monster)</option>
+                <option value="on">Aktif (3 Nyawa ❤️)</option>
+              </select>
+            </div>
           </div>
 
           <button id="btnApplyRules" type="button" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-display font-extrabold text-sm border-3 border-slate-800 shadow-[4px_4px_0_#1e293b] active:translate-x-0.5 active:translate-y-0.5 transition">
@@ -273,10 +291,10 @@
   </main>
 
   <!-- Game Scripts -->
-  <script src="js/words.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/words.js?v=20261016"></script>
+  <script src="js/audio.js?v=20261016"></script>
+  <script src="js/game.js?v=20261016"></script>
+  <script src="js/render.js?v=20261016"></script>
+  <script src="js/main.js?v=20261016"></script>
 </body>
 </html>

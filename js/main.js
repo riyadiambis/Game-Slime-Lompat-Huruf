@@ -27,6 +27,7 @@ function startNewGame() {
   state.paused = false;
   state.wordSuccessPaused = false;
   state.shieldTimer = 0;
+  state.hitCount = 0;
   state.rows.clear();
   state.particles = [];
   state.floatingTexts = [];
@@ -205,6 +206,13 @@ document.getElementById("btnRestartGame").addEventListener("click", () => {
 });
 
 // Modal Aturan & Kustomisasi
+// Pasangan [id select di modal, kunci di rules] untuk pengaturan yang disimpan
+const SETTING_SELECTS = [
+  ["selectCrumbleTiles", "crumbleTiles"],
+  ["selectMonsterSpeed", "monsterSpeed"],
+  ["selectLivesMode", "livesMode"]
+];
+
 document.getElementById("btnRulesModal").addEventListener("click", () => {
   state.paused = true;
   document.getElementById("rulesModal").classList.remove("hidden");
@@ -220,11 +228,11 @@ document.getElementById("btnApplyRules").addEventListener("click", () => {
   rules.orderRule = document.getElementById("selectOrderRule").value;
   rules.penaltyRule = document.getElementById("selectPenaltyRule").value;
   rules.highlightHint = document.getElementById("selectHighlightHint").value;
-  const selectCrumble = document.getElementById("selectCrumbleTiles");
-  if (selectCrumble) {
-    rules.crumbleTiles = selectCrumble.value;
-    saveCrumblePref(rules.crumbleTiles);
+  for (const [selectId, ruleKey] of SETTING_SELECTS) {
+    const el = document.getElementById(selectId);
+    if (el) rules[ruleKey] = el.value;
   }
+  saveSettings();
   state.paused = false;
   document.getElementById("rulesModal").classList.add("hidden");
   startNewGame();
@@ -295,9 +303,11 @@ window.addEventListener("resize", () => {
 });
 
 window.onload = () => {
-  // Samakan pilihan di modal Aturan dengan pengaturan papan runtuh yang tersimpan
-  const selectCrumble = document.getElementById("selectCrumbleTiles");
-  if (selectCrumble) selectCrumble.value = rules.crumbleTiles;
+  // Samakan pilihan di modal Aturan dengan pengaturan yang tersimpan
+  for (const [selectId, ruleKey] of SETTING_SELECTS) {
+    const el = document.getElementById(selectId);
+    if (el) el.value = rules[ruleKey];
+  }
   resizeCanvas();
   updateAudioUI();
   startNewGame();

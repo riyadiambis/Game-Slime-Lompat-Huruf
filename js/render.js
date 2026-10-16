@@ -8,7 +8,7 @@ const ctx = canvas.getContext("2d");
 
 // State lokal renderer untuk efek visual (shake, partikel, & squash)
 let screenShake = 0;
-let prevLives = 3;
+let prevHitCount = 0;
 let prevWordsCompleted = 0;
 let wasJumping = false;
 let landingSquashTimer = 0; // durasi squash memipih saat mendarat
@@ -677,11 +677,12 @@ function renderGame(timestamp) {
   }
 
   // 2. Deteksi Tertabrak Musuh (Screen Shake & Red Slime Droplets)
-  if (state.lives < prevLives) {
+  // (pakai hitCount, bukan nyawa, agar tetap terasa saat konsep nyawa dinonaktifkan)
+  if (state.hitCount > prevHitCount) {
     screenShake = 12;
     spawnHurtDroplets(state.player.renderX, state.player.renderY);
   }
-  prevLives = state.lives;
+  prevHitCount = state.hitCount;
 
   // 3. Deteksi Kata Lengkap (Hujan Konfeti)
   if (state.wordsCompleted > prevWordsCompleted) {

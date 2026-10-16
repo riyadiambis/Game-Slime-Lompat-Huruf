@@ -9,28 +9,50 @@
 const COLS = 7;
 const VISIBLE_ROWS = 13;
 
+// Kecepatan dasar monster (petak per detik) untuk tiap pilihan di modal Aturan
+const MONSTER_SPEEDS = {
+  very_slow: 0.3,
+  slow: 0.55,
+  normal: 0.9,
+  fast: 1.4
+};
+
+// Pengaturan ramah anak (default termudah), disimpan agar tetap sama setelah halaman dimuat ulang
+const SETTINGS_KEY = "slime_settings";
+const DEFAULT_SETTINGS = {
+  crumbleTiles: "off",      // "off" = tidak ada papan runtuh
+  monsterSpeed: "very_slow", // kunci MONSTER_SPEEDS
+  livesMode: "off"          // "off" = tanpa nyawa, tertabrak monster tidak membuat kalah
+};
+
+function loadSettings() {
+  const settings = { ...DEFAULT_SETTINGS };
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    if (saved.crumbleTiles === "on" || saved.crumbleTiles === "off") settings.crumbleTiles = saved.crumbleTiles;
+    if (saved.monsterSpeed in MONSTER_SPEEDS) settings.monsterSpeed = saved.monsterSpeed;
+    if (saved.livesMode === "on" || saved.livesMode === "off") settings.livesMode = saved.livesMode;
+  } catch (e) {}
+  return settings;
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      crumbleTiles: rules.crumbleTiles,
+      monsterSpeed: rules.monsterSpeed,
+      livesMode: rules.livesMode
+    }));
+  } catch (e) {}
+}
+
 const rules = {
   gameMode: "quest",
   orderRule: "strict",   // Selalu "strict" (wajib berurutan 1 sampai 4)
   penaltyRule: "none",   // Ramah anak: makan huruf salah tanpa penalti
   highlightHint: "off",  // Selalu "off" (tanpa penanda warna/halo pada huruf target)
-  crumbleTiles: loadCrumblePref() // "off" = papan runtuh dinonaktifkan (lebih mudah)
+  ...loadSettings()      // crumbleTiles, monsterSpeed, livesMode (bisa diatur di modal Aturan)
 };
-
-// Pilihan papan runtuh disimpan agar tetap sama setelah halaman dimuat ulang
-function loadCrumblePref() {
-  try {
-    return localStorage.getItem("slime_crumble_tiles") === "on" ? "on" : "off";
-  } catch (e) {
-    return "off";
-  }
-}
-
-function saveCrumblePref(value) {
-  try {
-    localStorage.setItem("slime_crumble_tiles", value);
-  } catch (e) {}
-}
 
 let state = {
   score: 0,
@@ -44,6 +66,7 @@ let state = {
   collectedSlots: ["", "", "", ""], // 4 slots
   pendingLetterRespawns: [], // antrean huruf yang harus muncul kembali setelah 2 detik
   shieldTimer: 0,
+  hitCount: 0, // bertambah tiap tertabrak monster (dipakai renderer untuk efek goyang layar)
   cameraRow: 1,
   player: {
     col: 3,
@@ -144,7 +167,7 @@ function generateRow(rowIndex) {
           char: "★",
           bobOffset: Math.random() * Math.PI * 2
         };
-      } else if (itemRoll < 0.315 && state.lives < 3) {
+      } else if (itemRoll < 0.315 && rules.livesMode === "on" && state.lives < 3) {
         item = {
           type: "heart",
           char: "♥",
@@ -166,8 +189,9 @@ function generateRow(rowIndex) {
   const obstacles = [];
   if (rowType === "road" && !isSafeStart) {
     const dir = Math.random() < 0.5 ? 1 : -1;
-    // Kecepatan pelan (0,6 - 1,1 petak/detik), naik sedikit sekali seiring kata yang selesai
-    const speed = 0.6 + Math.random() * 0.5 + Math.min(0.4, state.wordsCompleted * 0.04);
+    // Kecepatan sesuai pilihan di modal Aturan (variasi ±15% agar tidak seragam)
+    const baseSpeed = MONSTER_SPEEDS[rules.monsterSpeed] || MONSTER_SPEEDS.very_slow;
+    const speed = baseSpeed * (0.85 + Math.random() * 0.3);
     // Hanya sesekali (15%) ada 2 monster dalam satu jalur
     const count = Math.random() < 0.15 ? 2 : 1;
     for (let i = 0; i < count; i++) {
@@ -622,8 +646,10 @@ function triggerGameOver(reasonText) {
 function updateHUD() {
   document.getElementById("scoreDisplay").textContent = state.score;
   document.getElementById("wordsCountDisplay").textContent = state.wordsCompleted;
-  document.getElementById("livesDisplay").textContent =
-    state.lives > 0 ? "❤️".repeat(state.lives) : "💀";
+  const livesEl = document.getElementById("livesDisplay");
+  livesEl.textContent = state.lives > 0 ? "❤️".repeat(state.lives) : "💀";
+  // Sembunyikan nyawa jika konsep nyawa dinonaktifkan
+  livesEl.style.display = rules.livesMode === "off" ? "none" : "";
 
   const clueEl = document.getElementById("wordClueText");
   if (clueEl) {
@@ -815,8 +841,16 @@ function updateGame(dt) {
           obs.x = obs.dir > 0 ? -3 : COLS + 3;
           spawnParticles(state.player.renderX, r, "#facc15", 15);
           spawnFloatingText(state.player.renderX, r, "PERISAI!", "#facc15");
+        } else if (rules.livesMode === "off") {
+          // Tanpa nyawa: tertabrak hanya memberi efek kaget, permainan tetap lanjut
+          state.hitCount += 1;
+          playSFX("hit"); // "dug" berat saat kena musuh
+          spawnParticles(state.player.renderX, r, "#f43f5e", 22);
+          state.shieldTimer = 1.6; // Kebal sesaat setelah tertabrak
+          showToast("Aduh! Hati-hati Slime Jahat 😈", "text-rose-400");
         } else {
           state.lives -= 1;
+          state.hitCount += 1;
           playSFX("hit"); // "dug" berat saat kena musuh
           spawnParticles(state.player.renderX, r, "#f43f5e", 22);
           state.shieldTimer = 1.6; // Kebal sesaat setelah tertabrak
