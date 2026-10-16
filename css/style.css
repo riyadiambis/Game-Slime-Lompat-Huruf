@@ -1,0 +1,331 @@
+/* ==========================================
+   STYLE BUKU TULIS KOTAK-KOTAK & SLIME LUCU
+   ========================================== */
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: #f8fafc !important;
+  background-image: 
+    linear-gradient(rgba(148, 163, 184, 0.3) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.3) 1.5px, transparent 1.5px) !important;
+  background-size: 24px 24px !important;
+  color: #0f172a !important;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.font-display, h1, h2, h3, .font-heading {
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+}
+
+/* Header bergaya Buku Tulis Binder */
+header {
+  background-color: #ffffff !important;
+  border-bottom: 3px solid #1e293b !important;
+  box-shadow: 0 4px 0 rgba(30, 41, 59, 0.12) !important;
+}
+
+header h1 {
+  color: #0f172a !important;
+}
+
+header p {
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+/* Badge & Kotak Skor / Kata / Nyawa (Gaya Sticker Pastel) */
+header .flex.items-center.gap-1\.5,
+header #livesDisplay {
+  background: #ffffff !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  border-radius: 12px !important;
+  color: #1e293b !important;
+  font-weight: 800 !important;
+}
+
+#scoreDisplay {
+  color: #d97706 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 1.15rem !important;
+}
+
+#wordsCountDisplay {
+  color: #059669 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-size: 1.15rem !important;
+}
+
+/* Tombol Header (Aturan & Suara) */
+#btnRulesModal, #btnSoundToggle {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  border-radius: 12px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 700 !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+#btnRulesModal:hover, #btnSoundToggle:hover {
+  background: #f8fafc !important;
+}
+
+#btnRulesModal:active, #btnSoundToggle:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0px 0px 0 #1e293b !important;
+}
+
+/* Panel Target Kata (Kertas Buku Bergaris Kotak-Kotak) */
+main section {
+  background-color: #ffffff !important;
+  background-image: 
+    linear-gradient(rgba(203, 213, 225, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 213, 225, 0.4) 1px, transparent 1px) !important;
+  background-size: 16px 16px !important;
+  border: 3px solid #1e293b !important;
+  box-shadow: 4px 4px 0 #1e293b !important;
+  border-radius: 20px !important;
+}
+
+#modeBadge {
+  background: #bbf7d0 !important;
+  color: #065f46 !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  border-radius: 10px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+#orderBadge {
+  background: #bae6fd !important;
+  color: #0369a1 !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  border-radius: 10px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+/* Petunjuk Kata dengan Aksen Stabilo Kuning */
+#wordClueText {
+  color: #334155 !important;
+  font-weight: 700 !important;
+  margin-top: 6px !important;
+}
+
+#wordClueText strong {
+  background: #fef08a !important; /* Stabilo Kuning Cerah */
+  color: #0f172a !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  box-shadow: 2px 2px 0 rgba(30, 41, 59, 0.15) !important;
+  display: inline-block !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  transform: rotate(-0.5deg) !important;
+  border: 1.5px dashed #ca8a04 !important;
+}
+
+/* Slot Huruf (Kartu Tebal Kenyal) */
+.letter-slot {
+  width: 3.25rem !important;
+  height: 3.5rem !important;
+  background: #ffffff !important;
+  border: 3px solid #1e293b !important;
+  border-radius: 16px !important;
+  box-shadow: 3px 3px 0 #1e293b !important;
+  color: #94a3b8 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 1.5rem !important;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Slot Huruf saat Terisi (Jeli Mint Mengkilap Bouncing) */
+.letter-slot.filled {
+  background: linear-gradient(135deg, #6ee7b7, #10b981) !important;
+  border-color: #064e3b !important;
+  box-shadow: 3px 5px 0 #064e3b !important;
+  color: #ffffff !important;
+  text-shadow: 0 2px 0 #064e3b !important;
+  transform: translateY(-4px) scale(1.08) rotate(-1.5deg) !important;
+  animation: slimeSquish 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slimeSquish {
+  0% { transform: scale(0.8, 1.25) translateY(0); }
+  50% { transform: scale(1.15, 0.85) translateY(-6px); }
+  100% { transform: scale(1.08, 1.08) translateY(-4px) rotate(-1.5deg); }
+}
+
+#btnSkipWord {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2.5px 2.5px 0 #1e293b !important;
+  border-radius: 14px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+#btnSkipWord:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0.5px 0.5px 0 #1e293b !important;
+}
+
+/* Kanvas Area Permainan */
+#canvasWrapper {
+  border: 3.5px solid #1e293b !important;
+  border-radius: 24px !important;
+  box-shadow: 5px 5px 0 #1e293b !important;
+  background: #090d16 !important;
+}
+
+/* Toast Status Popup */
+#statusToast {
+  background: #ffffff !important;
+  color: #065f46 !important;
+  border: 2.5px solid #1e293b !important;
+  box-shadow: 3px 3px 0 #1e293b !important;
+  border-radius: 9999px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+/* Tombol D-Pad Sentuh (Chunky Squishy) */
+.dpad-btn {
+  background: #ffffff !important;
+  border: 2.5px solid #1e293b !important;
+  color: #1e293b !important;
+  box-shadow: 0 4px 0 #1e293b !important;
+  border-radius: 14px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+.dpad-btn:hover {
+  background: #f8fafc !important;
+}
+
+.dpad-btn:active {
+  transform: translateY(3px) !important;
+  box-shadow: 0 1px 0 #1e293b !important;
+}
+
+/* Pill Petunjuk Kontrol Bawah Kiri */
+main #canvasWrapper > div.hidden.sm\:flex {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #1e293b !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+}
+
+/* Footer Riwayat Kata */
+footer {
+  background-color: #ffffff !important;
+  border: 2.5px solid #1e293b !important;
+  box-shadow: 3px 3px 0 #1e293b !important;
+  border-radius: 16px !important;
+  color: #475569 !important;
+}
+
+footer span.font-semibold {
+  color: #0f172a !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 0.9rem !important;
+}
+
+#wordHistoryPills span {
+  border: 1.5px solid #1e293b !important;
+  box-shadow: 1.5px 1.5px 0 #1e293b !important;
+  background: #bbf7d0 !important;
+  color: #064e3b !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+/* Modals (Game Over & Aturan) Bergaya Kartu Lembar Tugas / Buku */
+#gameOverModal > div,
+#rulesModal > div {
+  background-color: #ffffff !important;
+  background-image: 
+    linear-gradient(rgba(203, 213, 225, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 213, 225, 0.35) 1px, transparent 1px) !important;
+  background-size: 18px 18px !important;
+  border: 3.5px solid #1e293b !important;
+  box-shadow: 8px 8px 0 #1e293b !important;
+  border-radius: 24px !important;
+  color: #1e293b !important;
+}
+
+#gameOverModal h2, #rulesModal h2 {
+  color: #0f172a !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+#gameOverModal p {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+#gameOverModal .grid {
+  background: #f8fafc !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 16px !important;
+}
+
+#btnRestartGame, #btnApplyRules {
+  background: linear-gradient(135deg, #34d399, #10b981) !important;
+  color: #ffffff !important;
+  border: 2.5px solid #064e3b !important;
+  box-shadow: 0 4px 0 #064e3b !important;
+  border-radius: 16px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 1rem !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+#btnRestartGame:active, #btnApplyRules:active {
+  transform: translateY(3px) !important;
+  box-shadow: 0 1px 0 #064e3b !important;
+}
+
+#rulesModal select {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+}
+
+#rulesModal label {
+  color: #1e293b !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+}
+
+#btnCloseRules {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+  border: 2px solid #1e293b !important;
+  border-radius: 10px !important;
+  font-weight: 800 !important;
+}

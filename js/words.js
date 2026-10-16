@@ -1,0 +1,55 @@
+// ==========================================
+// KAMUS KATA 4 HURUF BAHASA INDONESIA
+// ==========================================
+const WORD_BANK = [
+  { word: "BOLA", clue: "Benda bundar untuk olahraga sepak atau basket" },
+  { word: "BUKU", clue: "Kumpulan lembar kertas berisi bacaan ilmu" },
+  { word: "KOPI", clue: "Minuman hangat berkafein teman begadang" },
+  { word: "LARI", clue: "Melangkahkan kaki dengan kecepatan tinggi" },
+  { word: "KAYU", clue: "Bahan keras yang berasal dari batang pohon" },
+  { word: "NASI", clue: "Makanan pokok masyarakat Indonesia dari beras" },
+  { word: "MATA", clue: "Indra untuk melihat dunia sekitar" },
+  { word: "GURU", clue: "Sosok pengajar dan pendidik di sekolah" },
+  { word: "BIRU", clue: "Warna langit cerah dan lautan luas" },
+  { word: "SAPI", clue: "Hewan ternak penghasil susu dan daging" },
+  { word: "ROTI", clue: "Makanan berbahan tepung yang dipanggang" },
+  { word: "PAGI", clue: "Waktu saat matahari baru terbit" },
+  { word: "LAGU", clue: "Gubahan musik yang dinyanyikan dengan irama" },
+  { word: "KUDA", clue: "Hewan berkaki empat yang cepat untuk ditunggangi" },
+  { word: "BATU", clue: "Benda alam yang keras dan padat di sungai/gunung" },
+  { word: "RAJA", clue: "Pemimpin tertinggi sebuah kerajaan" },
+  { word: "TOPI", clue: "Aksesori pelindung kepala dari panas matahari" },
+  { word: "DADU", clue: "Kubus kecil bernomor titik 1 sampai 6" },
+  { word: "PETA", clue: "Gambar permukaan bumi penunjuk arah lokasi" },
+  { word: "SUSU", clue: "Minuman putih bergizi tinggi kaya kalsium" },
+  { word: "MEJA", clue: "Perabot berkaki tempat menaruh buku atau makanan" },
+  { word: "KACA", clue: "Benda bening tembus pandang untuk jendela" },
+  { word: "GULA", clue: "Bahan pemanis makanan dan minuman" },
+  { word: "PENA", clue: "Alat tulis bertinta untuk menulis di kertas" },
+  { word: "ikan".toUpperCase(), clue: "Hewan bernapas dengan insang yang hidup di air" },
+  { word: "AWAN", clue: "Kumpulan uap air putih yang melayang di langit" },
+  { word: "APIK", clue: "Rapi, bersih, dan bagus sekali" },
+  { word: "emas".toUpperCase(), clue: "Logam mulia berwarna kuning berkilau" }
+];
+
+const EXTRA_VALID_4_WORDS = new Set([
+  ...WORD_BANK.map(w => w.word),
+  "ADIK", "AIRI", "AJAR", "AKAR", "AKSI", "ALAM", "ALAT", "AMAN", "ANAK", "ANGK",
+  "APEL", "ARAH", "ARUS", "ASAM", "ASAP", "ASLI", "ATAP", "ATAS", "AYAH", "AYAM",
+  "BACA", "BAJU", "BAIK", "BARA", "BARU", "BATA", "BAYI", "BESI", "BISA", "BUAH",
+  "BUAT", "BUMI", "BUSA", "BUTA", "CARA", "CARI", "CUCI", "CUKA", "DADA", "DAUN",
+  "DAYA", "DEBU", "DESA", "DIRI", "DOA", "DUKA", "DURI", "EKOR", "ENAM", "FOTO",
+  "GAJI", "GALI", "GIGI", "GOA", "GUNA", "HARI", "HATI", "HIU", "HOBI", "IBU",
+  "IKAT", "ILMU", "INTI", "ISI", "JADI", "JAGA", "JALA", "JAMU", "JARI", "JASA",
+  "JATI", "JAUH", "JIWA", "JUGA", "KAKI", "KALI", "KAMI", "KAMU", "KATA", "KAYA",
+  "KEJU", "KERA", "KIRI", "KITA", "KOTA", "KUAT", "KUE", "KUKU", "KUNO", "LABA",
+  "LAGI", "LAIN", "LAKU", "LALU", "LAMA", "LAUT", "LIMA", "LUKA", "LUPA", "MAJU",
+  "MAKA", "MASA", "MADU", "MAIN", "MALU", "MANA", "MARI", "MAU", "MEGA", "MINI",
+  "MUKA", "MULA", "NADA", "NAIK", "NAMA", "NYIUR", "OBAT", "OLAH", "OTAK", "OTOT",
+  "PADI", "PAKU", "PALU", "PAPA", "PARA", "PASU", "PAUS", "PIPI", "PITA", "POLA",
+  "PUAS", "PULA", "PULU", "RAGA", "RAPI", "RASA", "RATU", "RUSA", "RODA", "SAMA",
+  "SANA", "SAPU", "SATU", "SAYA", "SEGI", "SENI", "SIAP", "SISI", "SORE", "SUKA",
+  "SUKU", "TALI", "TANI", "TAPI", "TARI", "TEBU", "TEPI", "TIGA", "TIBA", "TOKO",
+  "TUJU", "TULI", "UANG", "UBAT", "UDANG", "UJIAN", "ULAR", "ULAT", "UMUR", "UNIK",
+  "UPAH", "USIA", "USUL", "UTUH", "WAKTU", "WARNA", "YOGA", "ZONA"
+]);
