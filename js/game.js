@@ -75,10 +75,10 @@ const COLS = 7;
 const VISIBLE_ROWS = 13;
 
 const rules = {
-  gameMode: "quest",     // "quest" | "free"
-  orderRule: "any",      // "any" | "strict"
-  penaltyRule: "score",  // "score" | "life"
-  highlightHint: "on"    // "on" | "off"
+  gameMode: "quest",
+  orderRule: "strict",   // Selalu "strict" (wajib berurutan 1 sampai 4)
+  penaltyRule: "none",   // Ramah anak: makan huruf salah tanpa penalti
+  highlightHint: "off"   // Selalu "off" (tanpa penanda warna/halo pada huruf target)
 };
 
 let state = {
@@ -90,8 +90,9 @@ let state = {
   paused: false,
   currentWordObj: WORD_BANK[0],
   collectedSlots: ["", "", "", ""], // 4 slots
+  pendingLetterRespawns: [], // antrean huruf yang harus muncul kembali setelah 2 detik
   shieldTimer: 0,
-  cameraRow: 0,
+  cameraRow: 1,
   player: {
     col: 3,
     row: 1,
@@ -112,30 +113,63 @@ let state = {
 };
 
 // ==========================================
-// GENERASI BARIS DUNIA VOXEL & HURUF
+// PENGUCAPAN SUARA HURUF (WEB SPEECH API)
 // ==========================================
-function getNeededLetters() {
-  if (rules.gameMode === "free") {
-    return ["A", "I", "U", "E", "O", "B", "K", "L", "M", "R", "S", "T"];
-  }
-  const target = state.currentWordObj.word.split("");
-  if (rules.orderRule === "strict") {
-    const nextIdx = state.collectedSlots.findIndex(ch => ch === "");
-    return nextIdx !== -1 ? [target[nextIdx]] : target;
-  } else {
-    const needed = [];
-    for (let i = 0; i < 4; i++) {
-      if (!state.collectedSlots[i]) needed.push(target[i]);
+function speakLetter(ch) {
+  if (!soundEnabled) return;
+  try {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(ch.toLowerCase());
+      utter.lang = 'id-ID';
+      utter.rate = 0.9;
+      utter.pitch = 1.1;
+      window.speechSynthesis.speak(utter);
     }
-    return needed.length > 0 ? needed : target;
+  } catch (e) {
+    // Abaikan jika tidak didukung browser
   }
 }
 
+// ==========================================
+// GENERASI BARIS DUNIA VOXEL & HURUF
+// ==========================================
+// Dapatkan huruf yang sedang dicari saat ini (slot kosong paling pertama)
+function getCurrentTargetLetter() {
+  if (!state.currentWordObj || !state.currentWordObj.word) return "";
+  const targetChars = state.currentWordObj.word.split("");
+  const nextIdx = state.collectedSlots.findIndex(ch => ch === "");
+  return nextIdx !== -1 ? targetChars[nextIdx] : "";
+}
+
+// Dapatkan seluruh sisa huruf yang masih dibutuhkan dalam kata (dari slot kosong ke belakang)
+function getRemainingNeededLetters() {
+  if (!state.currentWordObj || !state.currentWordObj.word) return [];
+  const targetChars = state.currentWordObj.word.split("");
+  const nextIdx = state.collectedSlots.findIndex(ch => ch === "");
+  if (nextIdx === -1) return [];
+  return targetChars.slice(nextIdx);
+}
+
+function getNeededLetters() {
+  const cur = getCurrentTargetLetter();
+  return cur ? [cur] : [];
+}
+
 function pickSpawnLetter() {
-  const needed = getNeededLetters();
-  if (Math.random() < 0.58 && needed.length > 0) {
-    return needed[Math.floor(Math.random() * needed.length)];
+  const currentTarget = getCurrentTargetLetter();
+  const remaining = getRemainingNeededLetters();
+  const roll = Math.random();
+
+  // 50% peluang: huruf yang PERSIS sedang dicari saat ini
+  if (roll < 0.50 && currentTarget) {
+    return currentTarget;
   }
+  // 25% peluang: salah satu huruf berikutnya di sisa kata (termasuk huruf berulang)
+  if (roll < 0.75 && remaining.length > 0) {
+    return remaining[Math.floor(Math.random() * remaining.length)];
+  }
+  // 25% peluang: huruf alfabet acak sebagai pengecoh membaca
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   return alphabet[Math.floor(Math.random() * alphabet.length)];
 }
@@ -226,21 +260,41 @@ function pickNextTargetWord() {
   );
   state.currentWordObj = remaining[Math.floor(Math.random() * remaining.length)];
   state.collectedSlots = ["", "", "", ""];
+  state.pendingLetterRespawns = [];
   refreshExistingRowLetters();
   updateHUD();
 }
 
 function refreshExistingRowLetters() {
-  // Pastikan di baris depan pemain selalu ada huruf yang dibutuhkan
-  const needed = getNeededLetters();
-  if (needed.length === 0) return;
-  for (let r = state.player.row + 1; r <= state.player.row + 6; r++) {
+  const currentTarget = getCurrentTargetLetter();
+  if (!currentTarget) return;
+
+  // Cek apakah huruf yang sedang dicari saat ini sudah ada di baris depan
+  let countTargetAhead = 0;
+  for (let r = state.player.row + 1; r <= state.player.row + 5; r++) {
     const rowData = generateRow(r);
-    if (Math.random() < 0.65) {
-      const randCol = Math.floor(Math.random() * COLS);
-      rowData.tiles[randCol].item = {
+    for (const tile of rowData.tiles) {
+      if (tile.item && tile.item.type === "letter" && tile.item.char === currentTarget) {
+        countTargetAhead++;
+      }
+    }
+  }
+
+  // Jika belum ada di baris depan, pastikan muncul di salah satu petak yang aman dijangkau
+  if (countTargetAhead === 0) {
+    const targetRowIdx = state.player.row + 2 + Math.floor(Math.random() * 3);
+    const rowData = generateRow(targetRowIdx);
+    const emptyCols = [];
+    for (let c = 0; c < COLS; c++) {
+      if (!rowData.tiles[c].item && rowData.tiles[c].state !== "fallen") {
+        emptyCols.push(c);
+      }
+    }
+    if (emptyCols.length > 0) {
+      const chosenCol = emptyCols[Math.floor(Math.random() * emptyCols.length)];
+      rowData.tiles[chosenCol].item = {
         type: "letter",
-        char: needed[Math.floor(Math.random() * needed.length)],
+        char: currentTarget,
         bobOffset: Math.random() * Math.PI * 2
       };
     }
@@ -314,89 +368,60 @@ function handleCollectItem(tile, col, row) {
 }
 
 function fillWildcardLetter(col, row) {
-  if (rules.gameMode === "free") {
-    const emptyIdx = state.collectedSlots.findIndex(s => s === "");
-    if (emptyIdx !== -1) {
-      // Isi dengan vokal serbaguna 'A'
-      state.collectedSlots[emptyIdx] = "A";
-      playSound("letter_ok");
-      spawnParticles(col, row, "#facc15", 18);
-      spawnFloatingText(col, row, "★ JOKER -> A", "#facc15");
-      checkWordCompletion(col, row);
-      updateHUD();
-    }
-    return;
-  }
-
-  const target = state.currentWordObj.word.split("");
-  const emptyIdx = state.collectedSlots.findIndex(s => s === "");
-  if (emptyIdx !== -1) {
-    state.collectedSlots[emptyIdx] = target[emptyIdx];
+  const targetChars = state.currentWordObj.word.split("");
+  const currentSlotIndex = state.collectedSlots.findIndex(s => s === "");
+  if (currentSlotIndex !== -1) {
+    const filledChar = targetChars[currentSlotIndex];
+    state.collectedSlots[currentSlotIndex] = filledChar;
     state.score += 30;
     playSound("letter_ok");
+    speakLetter(filledChar);
     spawnParticles(col, row, "#facc15", 18);
-    spawnFloatingText(col, row, `★ JOKER [${target[emptyIdx]}]`, "#facc15");
+    spawnFloatingText(col, row, `★ JOKER [${filledChar}]`, "#facc15");
     checkWordCompletion(col, row);
+    refreshExistingRowLetters();
     updateHUD();
   }
 }
 
 function processCollectedLetter(ch, col, row) {
-  if (rules.gameMode === "free") {
-    const emptyIdx = state.collectedSlots.findIndex(s => s === "");
-    if (emptyIdx !== -1) {
-      state.collectedSlots[emptyIdx] = ch;
-      state.score += 15;
-      playSound("letter_ok");
-      spawnParticles(col, row, "#38bdf8", 12);
-      spawnFloatingText(col, row, `+${ch}`, "#38bdf8");
-      checkWordCompletion(col, row);
-      updateHUD();
-    }
-    return;
-  }
+  const targetChars = state.currentWordObj.word.split("");
+  const currentSlotIndex = state.collectedSlots.findIndex(s => s === "");
+  if (currentSlotIndex === -1) return;
 
-  // Mode Target Kata (Quest)
-  const target = state.currentWordObj.word.split("");
-  let matchedIndex = -1;
+  const expectedChar = targetChars[currentSlotIndex];
 
-  if (rules.orderRule === "strict") {
-    const nextEmpty = state.collectedSlots.findIndex(s => s === "");
-    if (nextEmpty !== -1 && target[nextEmpty] === ch) {
-      matchedIndex = nextEmpty;
-    }
-  } else {
-    for (let i = 0; i < 4; i++) {
-      if (state.collectedSlots[i] === "" && target[i] === ch) {
-        matchedIndex = i;
-        break;
-      }
-    }
-  }
-
-  if (matchedIndex !== -1) {
-    state.collectedSlots[matchedIndex] = ch;
+  if (ch === expectedChar) {
+    // ==========================================
+    // HURUF BENAR (sesuai urutan berikutnya)
+    // ==========================================
+    state.collectedSlots[currentSlotIndex] = ch;
     state.score += 25;
     playSound("letter_ok");
-    spawnParticles(col, row, "#10b981", 15);
+    speakLetter(ch); // Bacakan huruf secara audio
+    spawnParticles(col, row, "#10b981", 16);
     spawnFloatingText(col, row, `✓ ${ch} (+25)`, "#34d399");
     checkWordCompletion(col, row);
     refreshExistingRowLetters();
   } else {
-    // Salah ambil huruf!
-    playSound("wrong");
-    spawnParticles(col, row, "#ef4444", 12);
-    if ( rules.penaltyRule === "life" && state.shieldTimer <= 0 ) {
-      state.lives -= 1;
-      spawnFloatingText(col, row, `✗ ${ch} (-1 ❤️)`, "#f87171");
-      showToast(`Huruf '${ch}' tidak cocok! -1 Nyawa`, "text-rose-400");
-      if (state.lives <= 0) {
-        triggerGameOver(`Kamu mengambil huruf '${ch}' yang salah hingga kehabisan nyawa.`);
-      }
-    } else {
-      state.score = Math.max(0, state.score - 15);
-      spawnFloatingText(col, row, `✗ ${ch} (-15 Poin)`, "#fbbf24");
-      showToast(`Huruf '${ch}' bukan bagian kata target!`, "text-amber-300");
+    // ==========================================
+    // HURUF SALAH (bukan urutan berikutnya)
+    // ==========================================
+    // Slime memakan huruf itu (gelembung hilang)
+    // TIDAK mengurangi nyawa, TIDAK mengurangi skor, TIDAK ada bunyi
+    spawnParticles(col, row, "#bae6fd", 8);
+
+    // Cek apakah huruf yang dimakan masih dibutuhkan di slot berikutnya
+    // (misal makan J saat mencari M pada kata MEJA, atau huruf berulang pada SUSU)
+    const remainingNeeded = targetChars.slice(currentSlotIndex);
+    const isStillNeeded = remainingNeeded.includes(ch);
+
+    if (isStillNeeded) {
+      if (!state.pendingLetterRespawns) state.pendingLetterRespawns = [];
+      state.pendingLetterRespawns.push({
+        char: ch,
+        timer: 2.0 // Muncul kembali setelah 2 detik di posisi depan
+      });
     }
   }
   updateHUD();
@@ -491,49 +516,49 @@ function updateHUD() {
   document.getElementById("livesDisplay").textContent =
     state.lives > 0 ? "❤️".repeat(state.lives) : "💀";
 
-  const modeBadge = document.getElementById("modeBadge");
-  const orderBadge = document.getElementById("orderBadge");
   const clueEl = document.getElementById("wordClueText");
-
-  if (rules.gameMode === "quest") {
-    modeBadge.textContent = "Mode Target Kata";
-    orderBadge.textContent = rules.orderRule === "strict" ? "Urutan: Harus 1→4" : "Urutan: Bebas";
-    clueEl.innerHTML = `Petunjuk: <strong class="text-amber-300">${state.currentWordObj.clue}</strong>`;
-  } else {
-    modeBadge.textContent = "Mode Rangkai Bebas";
-    orderBadge.textContent = "4 Huruf Apa Saja";
-    clueEl.innerHTML = `Ambil <strong class="text-emerald-300">4 huruf apa pun</strong> untuk membentuk kata 4 huruf!`;
-  }
-
-  const targetChars = state.currentWordObj.word.split("");
-  for (let i = 0; i < 4; i++) {
-    const slotEl = document.getElementById(`slot${i}`);
-    const collected = state.collectedSlots[i];
-    if (collected) {
-      slotEl.textContent = collected;
-      slotEl.className =
-        "letter-slot filled w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-emerald-500 border-2 border-emerald-300 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl text-slate-950";
+  if (clueEl) {
+    if (rules.gameMode === "quest") {
+      clueEl.innerHTML = `<strong class="text-slate-900">${state.currentWordObj.clue}</strong>`;
     } else {
-      // Tampilkan bayangan huruf tipis di mode quest agar mudah dipahami
-      slotEl.textContent = rules.gameMode === "quest" ? targetChars[i] : "_";
-      slotEl.className =
-        "letter-slot w-11 h-12 sm:w-13 sm:h-14 rounded-xl bg-slate-800/90 border-2 border-slate-600 flex items-center justify-center font-display font-extrabold text-xl sm:text-2xl " +
-        (rules.gameMode === "quest" ? "text-slate-500/70" : "text-slate-400");
+      clueEl.innerHTML = `<strong class="text-slate-900">Susun kata 4 huruf!</strong>`;
     }
   }
 
-  // Riwayat kata di footer
+  const activeSlotIdx = state.collectedSlots.findIndex(ch => ch === "");
+
+  for (let i = 0; i < 4; i++) {
+    const slotEl = document.getElementById(`slot${i}`);
+    if (!slotEl) continue;
+    const collected = state.collectedSlots[i];
+    if (collected) {
+      slotEl.textContent = collected;
+      slotEl.className = "letter-slot filled";
+    } else if (i === activeSlotIdx) {
+      // Slot yang sedang dicari: diberi tanda stabilo kuning berdenyut (menunjukkan posisi, BUKAN hurufnya)
+      slotEl.textContent = "_";
+      slotEl.className = "letter-slot active-target";
+    } else {
+      // Slot berikutnya: kosong polos
+      slotEl.textContent = "_";
+      slotEl.className = "letter-slot";
+    }
+  }
+
+  // Riwayat kata di bar atas (pills kecil)
   const historyEl = document.getElementById("wordHistoryPills");
-  if (state.completedWords.length === 0) {
-    historyEl.innerHTML = `<span class="text-slate-500 italic">Lompat ke kubus huruf untuk mulai merangkai!</span>`;
-  } else {
-    historyEl.innerHTML = state.completedWords
-      .slice(-8)
-      .map(
-        w =>
-          `<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-display font-bold text-xs">${w}</span>`
-      )
-      .join("");
+  if (historyEl) {
+    if (state.completedWords.length === 0) {
+      historyEl.innerHTML = "";
+    } else {
+      historyEl.innerHTML = state.completedWords
+        .slice(-3)
+        .map(
+          w =>
+            `<span class="px-1.5 py-0.5 rounded-lg bg-emerald-100 border border-emerald-600 text-emerald-800 font-display font-extrabold text-[11px] shadow-[1px_1px_0_#059669]">${w}</span>`
+        )
+        .join("");
+    }
   }
 }
 
@@ -545,6 +570,40 @@ function updateGame(dt) {
 
   if (state.shieldTimer > 0) {
     state.shieldTimer = Math.max(0, state.shieldTimer - dt);
+  }
+
+  // Update antrean huruf yang harus muncul kembali (setelah 2 detik di posisi depan yang bisa dijangkau)
+  if (state.pendingLetterRespawns && state.pendingLetterRespawns.length > 0) {
+    for (let i = state.pendingLetterRespawns.length - 1; i >= 0; i--) {
+      const respawnItem = state.pendingLetterRespawns[i];
+      respawnItem.timer -= dt;
+      if (respawnItem.timer <= 0) {
+        let placed = false;
+        // Tempatkan di petak aman yang kosong di 2 sampai 5 baris di depan pemain
+        for (let r = state.player.row + 2; r <= state.player.row + 5; r++) {
+          const rowData = generateRow(r);
+          const emptyCols = [];
+          for (let c = 0; c < COLS; c++) {
+            if (!rowData.tiles[c].item && rowData.tiles[c].state !== "fallen") {
+              emptyCols.push(c);
+            }
+          }
+          if (emptyCols.length > 0) {
+            const chosenCol = emptyCols[Math.floor(Math.random() * emptyCols.length)];
+            rowData.tiles[chosenCol].item = {
+              type: "letter",
+              char: respawnItem.char,
+              bobOffset: Math.random() * Math.PI * 2
+            };
+            placed = true;
+            break;
+          }
+        }
+        if (placed || respawnItem.timer < -2.0) {
+          state.pendingLetterRespawns.splice(i, 1);
+        }
+      }
+    }
   }
 
   // Animasi lompat karakter
@@ -584,12 +643,13 @@ function updateGame(dt) {
   }
 
   // Kamera mengikuti baris pemain secara mulus
-  const targetCam = Math.max(0, state.player.renderY - 2.3);
-  state.cameraRow += (targetCam - state.cameraRow) * Math.min(1, dt * 6.5);
+  // Slime selalu terlihat di sepertiga bawah layar (baseScreenY = H * 0.72)
+  state.cameraRow += (state.player.renderY - state.cameraRow) * Math.min(1, dt * 7.0);
+
   // Kamera juga bergerak pelan ke depan agar tetap seru
   if (state.player.row >= 2) {
-    state.cameraRow += dt * 0.22;
-    if (state.player.renderY < state.cameraRow - 1.1) {
+    state.cameraRow += dt * 0.18;
+    if (state.player.renderY < state.cameraRow - 1.8) {
       triggerGameOver("Kamu tertinggal oleh pergeseran layar!");
       return;
     }

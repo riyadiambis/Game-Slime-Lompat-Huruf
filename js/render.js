@@ -22,9 +22,37 @@ function resizeCanvas() {
   const wrapper = document.getElementById("canvasWrapper");
   if (!wrapper) return;
   const rect = wrapper.getBoundingClientRect();
-  canvas.width = Math.max(320, Math.floor(rect.width));
-  canvas.height = Math.max(320, Math.floor(rect.height));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(320, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(320, Math.floor(rect.height * dpr));
+  canvas.style.width = `${rect.width}px`;
+  canvas.style.height = `${rect.height}px`;
 }
+
+// ==========================================
+// HITUNG SKALA UKURAN VOXEL & KAMERA RESPONSIF
+// ==========================================
+function getBoardMetrics(W, H) {
+  // Target tinggi petak agar ~7 baris terlihat di depan slime (area depan = 72% dari tinggi layar)
+  const targetTileH = Math.floor(H / 8.2);
+  // Lebar maksimal petak agar 7 kolom tidak melebihi 94% lebar kanvas
+  const maxTileW = Math.floor((W * 0.94) / COLS);
+  
+  // tileW dihitung proporsional terhadap targetTileH (rasio ~1.36) tapi tidak melebihi lebar layar
+  let tileW = Math.min(maxTileW, Math.floor(targetTileH * 1.36));
+  // Batasi batas minimal 52px dan maksimal 165px
+  tileW = Math.max(52, Math.min(tileW, 165));
+
+  const tileH = Math.floor(tileW * 0.70);
+  const tileDepth = Math.max(12, Math.floor(tileH * 0.35));
+  const boardWidth = tileW * COLS;
+  const startX = Math.floor((W - boardWidth) / 2);
+  // Slime selalu berada di sepertiga bawah layar (28% dari bawah, 72% dari atas)
+  const baseScreenY = Math.floor(H * 0.72);
+
+  return { tileW, tileH, tileDepth, boardWidth, startX, baseScreenY };
+}
+window.getBoardMetrics = getBoardMetrics;
 
 // Helper: Menggambar rounded rectangle
 function drawRoundedRect(x, y, w, h, radius) {
@@ -44,9 +72,7 @@ function drawRoundedRect(x, y, w, h, radius) {
 
 // Cek apakah huruf sedang dibutuhkan
 function isLetterHighlighted(char) {
-  if (rules.highlightHint === "off" || rules.gameMode === "free") return false;
-  const needed = getNeededLetters();
-  return needed.includes(char);
+  return false;
 }
 
 // Spawn tetesan slime saat mendarat
@@ -304,45 +330,26 @@ function drawItem(item, x, y, size, timestamp) {
   }
 
   // ==========================================
-  // GELEMBUNG BENING UNTUK HURUF
+  // GELEMBUNG BENING UNTUK HURUF (SERAGAM SEMUA)
+  // Tidak ada penanda warna/halo agar anak membaca hurufnya
   // ==========================================
-  const isTarget = isLetterHighlighted(item.char);
-
-  // Efek Lingkaran Cahaya / Halo untuk Huruf Target
-  if (isTarget) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(52, 211, 153, 0.85)";
-    ctx.lineWidth = 3.5;
-    ctx.setLineDash([5, 4]);
-    ctx.lineDashOffset = -timestamp * 0.03;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius * 1.25, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
 
   // Bola Gelembung Utama (Translucent Soap Bubble)
   const bubbleGrad = ctx.createRadialGradient(
     cx - radius * 0.35, cy - radius * 0.35, radius * 0.1,
     cx, cy, radius
   );
-  if (isTarget) {
-    bubbleGrad.addColorStop(0, "rgba(255, 255, 255, 0.75)");
-    bubbleGrad.addColorStop(0.5, "rgba(167, 243, 208, 0.45)");
-    bubbleGrad.addColorStop(1, "rgba(16, 185, 129, 0.75)");
-  } else {
-    bubbleGrad.addColorStop(0, "rgba(255, 255, 255, 0.65)");
-    bubbleGrad.addColorStop(0.6, "rgba(224, 242, 254, 0.35)");
-    bubbleGrad.addColorStop(1, "rgba(56, 189, 248, 0.55)");
-  }
+  bubbleGrad.addColorStop(0, "rgba(255, 255, 255, 0.72)");
+  bubbleGrad.addColorStop(0.55, "rgba(224, 242, 254, 0.38)");
+  bubbleGrad.addColorStop(1, "rgba(56, 189, 248, 0.62)");
 
   ctx.fillStyle = bubbleGrad;
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.fill();
 
-  // Tepi Gelembung dengan pantulan pelangi halus
-  ctx.strokeStyle = isTarget ? "#10b981" : "rgba(255, 255, 255, 0.9)";
+  // Tepi Gelembung dengan pantulan putih halus
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
   ctx.lineWidth = 1.8;
   ctx.stroke();
 
@@ -364,13 +371,11 @@ function drawItem(item, x, y, size, timestamp) {
   ctx.ellipse(cx + radius * 0.4, cy + radius * 0.4, radius * 0.22, radius * 0.1, -Math.PI / 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Teks Huruf di dalam Gelembung
+  // Teks Huruf di dalam Gelembung (Tebal, Jelas, Gelap)
   ctx.font = `800 ${Math.floor(radius * 1.25)}px "Baloo 2", cursive, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
-  // Bayangan teks agar kontras dan mudah dibaca anak
-  ctx.fillStyle = isTarget ? "#022c22" : "#0f172a";
+  ctx.fillStyle = "#0f172a";
   ctx.fillText(item.char, cx, cy + 2);
 }
 
@@ -645,8 +650,9 @@ function drawPlayerSlime(pPos, pW, pH, timestamp) {
 // RENDER UTAMA DUNIA GAME
 // ==========================================
 function renderGame(timestamp) {
-  const W = canvas.width;
-  const H = canvas.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = canvas.width / dpr;
+  const H = canvas.height / dpr;
 
   // Hitung delta time internal untuk partikel & screen shake
   if (!lastTimestampRender) lastTimestampRender = timestamp;
@@ -681,8 +687,10 @@ function renderGame(timestamp) {
     screenShake = Math.max(0, screenShake - dt * 28);
   }
 
-  ctx.clearRect(0, 0, W, H);
+  // Bersihkan buffer canvas penuh, lalu gambar dalam satuan piksel CSS logis via dpr scale
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
+  ctx.scale(dpr, dpr);
 
   // Terapkan Efek Goyang Layar (Screen Shake)
   if (screenShake > 0) {
@@ -701,7 +709,7 @@ function renderGame(timestamp) {
 
   // Bintang-bintang lembut berkedip di latar
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 28; i++) {
     const starX = ((i * 79 + 30) % W);
     const starY = ((i * 53 + 20) % (H * 0.7));
     const twinkle = Math.sin(timestamp * 0.003 + i) * 0.4 + 0.6;
@@ -710,24 +718,20 @@ function renderGame(timestamp) {
   }
   ctx.globalAlpha = 1.0;
 
-  // Ukuran petak voxel isometrik
-  const tileW = Math.min(Math.floor((W * 0.86) / COLS), 68);
-  const tileH = Math.floor(tileW * 0.72);
-  const tileDepth = Math.max(10, Math.floor(tileH * 0.34));
-  const boardWidth = tileW * COLS;
-  const startX = Math.floor((W - boardWidth) / 2);
-  const baseScreenY = H - Math.floor(tileH * 2.1);
+  // Metrik petak voxel isometrik dinamis sesuai resolusi layar
+  const metrics = getBoardMetrics(W, H);
+  const { tileW, tileH, tileDepth, startX, baseScreenY } = metrics;
 
   function worldToScreen(col, row, z = 0) {
     const relRow = row - state.cameraRow;
-    const isoSkew = (relRow - 3) * 2.2;
-    const sx = startX + col * tileW + isoSkew;
-    const sy = baseScreenY - relRow * tileH - z * (tileH * 0.9);
+    const sx = startX + col * tileW;
+    const sy = baseScreenY - relRow * tileH - z * (tileH * 0.95);
     return { x: sx, y: sy };
   }
 
-  const minRow = Math.max(0, Math.floor(state.cameraRow) - 1);
-  const maxRow = Math.floor(state.cameraRow) + VISIBLE_ROWS;
+  // Render baris dari depan hingga 8 baris ke depan
+  const minRow = Math.max(0, Math.floor(state.cameraRow) - 2);
+  const maxRow = Math.floor(state.cameraRow) + 8;
 
   // Render dari baris terjauh ke terdekat (Depth Sorting 2.5D)
   for (let r = maxRow; r >= minRow; r--) {
@@ -753,20 +757,20 @@ function renderGame(timestamp) {
         shakeX
       );
 
-      // 2. Gambar Gelembung Huruf / Power-up di atas Balok
+      // 2. Gambar Gelembung Huruf / Power-up di atas Balok (Ukuran Besar & Jelas Dibaca)
       if (tile.item) {
-        const bob = Math.sin(timestamp * 0.004 + tile.item.bobOffset) * 0.16 + 0.28;
-        const itemPos = worldToScreen(c + 0.16, r, bob);
-        const itemBoxSize = Math.floor(tileW * 0.68);
+        const bob = Math.sin(timestamp * 0.004 + tile.item.bobOffset) * 0.16 + 0.32;
+        const itemPos = worldToScreen(c + 0.12, r, bob);
+        const itemBoxSize = Math.floor(tileW * 0.76);
 
         // Bayangan lembut gelembung di lantai
-        ctx.fillStyle = "rgba(15, 23, 42, 0.25)";
+        ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
         ctx.beginPath();
         ctx.ellipse(
           pos.x + tileW * 0.48,
           pos.y - tileH * 0.45,
-          itemBoxSize * 0.35,
-          itemBoxSize * 0.2,
+          itemBoxSize * 0.38,
+          itemBoxSize * 0.22,
           0, 0, Math.PI * 2
         );
         ctx.fill();
@@ -779,8 +783,8 @@ function renderGame(timestamp) {
     rowData.obstacles.forEach(obs => {
       if (obs.x < -1 || obs.x > COLS + 1) return;
       const obsPos = worldToScreen(obs.x + 0.1, r, 0.12);
-      const obsW = Math.floor(tileW * 0.75);
-      const obsH = Math.floor(tileH * 0.72);
+      const obsW = Math.floor(tileW * 0.78);
+      const obsH = Math.floor(tileH * 0.75);
 
       // Bayangan slime jahat
       ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
@@ -799,22 +803,22 @@ function renderGame(timestamp) {
       ctx.fillStyle = "rgba(15, 23, 42, 0.42)";
       ctx.beginPath();
       ctx.ellipse(
-        pShadow.x + tileW * 0.48,
-        pShadow.y - tileH * 0.45,
-        tileW * 0.36 * shadowScale,
-        tileH * 0.22 * shadowScale,
+        pShadow.x + tileW * 0.5,
+        pShadow.y - tileH * 0.42,
+        tileW * 0.38 * shadowScale,
+        tileH * 0.24 * shadowScale,
         0, 0, Math.PI * 2
       );
       ctx.fill();
 
       // Badan Slime Pemain
       const pPos = worldToScreen(
-        state.player.renderX + 0.12,
+        state.player.renderX + 0.1,
         state.player.renderY,
-        state.player.jumpZ + 0.14
+        state.player.jumpZ + 0.15
       );
-      const pW = Math.floor(tileW * 0.75);
-      const pH = Math.floor(tileH * 0.8);
+      const pW = Math.floor(tileW * 0.8);
+      const pH = Math.floor(tileH * 0.85);
 
       drawPlayerSlime(pPos, pW, pH, timestamp);
     }
@@ -840,7 +844,7 @@ function renderGame(timestamp) {
   slimeDroplets = slimeDroplets.filter(d => d.life > 0);
   ctx.globalAlpha = 1.0;
 
-  // 6. Gambar Partikel State Bawaan (dibuat bulat berkilau)
+  // 6. Gambar Partikel State Bawaan
   state.particles.forEach(p => {
     const ptPos = worldToScreen(p.col + 0.4, p.row, p.z);
     ctx.fillStyle = p.color;
@@ -854,13 +858,14 @@ function renderGame(timestamp) {
   // 7. Gambar Teks Melayang (Font Baloo 2 Lucu dengan Stroke)
   state.floatingTexts.forEach(ft => {
     const ftPos = worldToScreen(ft.col + 0.5, ft.row, ft.z);
-    ctx.font = '800 16px "Baloo 2", cursive, sans-serif';
+    const fontSize = Math.max(16, Math.floor(tileW * 0.22));
+    ctx.font = `800 ${fontSize}px "Baloo 2", cursive, sans-serif`;
     ctx.textAlign = "center";
     ctx.globalAlpha = Math.max(0, ft.life);
 
     // Outline gelap teks
     ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(3, Math.floor(fontSize * 0.2));
     ctx.strokeText(ft.text, ftPos.x, ftPos.y);
 
     // Isi teks

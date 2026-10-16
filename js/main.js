@@ -29,6 +29,7 @@ function startNewGame() {
   state.rows.clear();
   state.particles = [];
   state.floatingTexts = [];
+  state.pendingLetterRespawns = [];
 
   state.player = {
     col: 3,
@@ -44,7 +45,7 @@ function startNewGame() {
     targetRow: 1,
     facing: "up"
   };
-  state.cameraRow = 0;
+  state.cameraRow = 1;
 
   for (let r = 0; r <= VISIBLE_ROWS + 3; r++) {
     generateRow(r);
@@ -81,24 +82,17 @@ document.getElementById("btnDown").addEventListener("click", () => tryJump(0, -1
 document.getElementById("btnLeft").addEventListener("click", () => tryJump(-1, 0, "left"));
 document.getElementById("btnRight").addEventListener("click", () => tryJump(1, 0, "right"));
 
-// Klik langsung di area canvas untuk melompat ke arah klik
+// Klik langsung di area canvas untuk melompat ke arah klik (koordinat akurat sesuai getBoardMetrics)
 canvas.addEventListener("pointerdown", e => {
   if (state.gameOver || state.paused) return;
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
 
-  // Bandingkan dengan posisi layar karakter saat ini
-  const W = canvas.width;
-  const H = canvas.height;
-  const tileW = Math.min(Math.floor((W * 0.86) / COLS), 68);
-  const tileH = Math.floor(tileW * 0.72);
-  const boardWidth = tileW * COLS;
-  const startX = Math.floor((W - boardWidth) / 2);
-  const baseScreenY = H - Math.floor(tileH * 2.1);
+  const { tileW, tileH, startX, baseScreenY } = window.getBoardMetrics(rect.width, rect.height);
   const relRow = state.player.renderY - state.cameraRow;
   const px = startX + (state.player.renderX + 0.5) * tileW;
-  const py = baseScreenY - (relRow + 0.5) * tileH;
+  const py = baseScreenY - relRow * tileH;
 
   const dx = clickX - px;
   const dy = clickY - py;
@@ -116,11 +110,11 @@ document.getElementById("btnSkipWord").addEventListener("click", () => {
   initAudio();
   if (rules.gameMode === "quest") {
     pickNextTargetWord();
-    showToast("Kata target diganti!", "text-cyan-300");
+    showToast("Kata target diganti!", "text-cyan-600");
   } else {
     state.collectedSlots = ["", "", "", ""];
     updateHUD();
-    showToast("Slot huruf direset!", "text-cyan-300");
+    showToast("Slot huruf direset!", "text-cyan-600");
   }
 });
 
@@ -153,9 +147,60 @@ document.getElementById("btnApplyRules").addEventListener("click", () => {
   state.paused = false;
   document.getElementById("rulesModal").classList.add("hidden");
   startNewGame();
-  showToast("Aturan baru berhasil diterapkan!", "text-emerald-300");
+  showToast("Aturan baru berhasil diterapkan!", "text-emerald-600");
 });
 
+// ==========================================
+// TOMBOL FULLSCREEN (HTML5 FULLSCREEN API)
+// ==========================================
+const btnFullscreen = document.getElementById("btnFullscreen");
+if (btnFullscreen) {
+  btnFullscreen.addEventListener("click", () => {
+    if (!document.fullscreenElement) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+  });
+
+  const onFullscreenChange = () => {
+    const isFull = !!document.fullscreenElement;
+    btnFullscreen.title = isFull ? "Keluar Layar Penuh" : "Layar Penuh";
+    setTimeout(resizeCanvas, 100);
+  };
+  document.addEventListener("fullscreenchange", onFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+}
+
+// ==========================================
+// LEGENDA KONTROL (AUTO-HIDE SETELAH 5 DETIK & TOGGLE '?')
+// ==========================================
+const legendPill = document.getElementById("legendPill");
+const btnToggleLegend = document.getElementById("btnToggleLegend");
+let legendTimer = setTimeout(() => {
+  if (legendPill) {
+    legendPill.classList.add("hidden");
+  }
+}, 5000);
+
+if (btnToggleLegend && legendPill) {
+  btnToggleLegend.addEventListener("click", () => {
+    legendPill.classList.toggle("hidden");
+    if (legendTimer) clearTimeout(legendTimer);
+  });
+}
+
+// ==========================================
+// EVENT RESIZE & INISIALISASI
+// ==========================================
 window.addEventListener("resize", () => {
   resizeCanvas();
 });

@@ -1,5 +1,6 @@
 /* ==========================================
    STYLE BUKU TULIS KOTAK-KOTAK & SLIME LUCU
+   Layout Responsif Layar Penuh (100vh)
    ========================================== */
 
 * {
@@ -9,42 +10,139 @@
   -webkit-touch-callout: none;
 }
 
-body {
+html, body {
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
   font-family: 'Nunito', sans-serif;
-  background-color: #f8fafc !important;
-  background-image: 
-    linear-gradient(rgba(148, 163, 184, 0.3) 1.5px, transparent 1.5px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.3) 1.5px, transparent 1.5px) !important;
-  background-size: 24px 24px !important;
-  color: #0f172a !important;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
+  background-color: #090d16;
+  color: #0f172a;
 }
 
 .font-display, h1, h2, h3, .font-heading {
   font-family: 'Baloo 2', cursive, sans-serif !important;
 }
 
-/* Header bergaya Buku Tulis Binder */
-header {
+/* ==========================================
+   PANEL ATAS (Gaya Buku Tulis Ringkas 1-2 Baris)
+   ========================================== */
+#topPanel {
   background-color: #ffffff !important;
+  background-image: 
+    linear-gradient(rgba(203, 213, 225, 0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 213, 225, 0.45) 1px, transparent 1px) !important;
+  background-size: 16px 16px !important;
   border-bottom: 3px solid #1e293b !important;
   box-shadow: 0 4px 0 rgba(30, 41, 59, 0.12) !important;
 }
 
-header h1 {
+#topPanel h1 {
   color: #0f172a !important;
 }
 
-header p {
-  color: #64748b !important;
-  font-weight: 600 !important;
+/* Petunjuk Kata dengan Stabilo Kuning Cerah */
+#wordClueText strong {
+  background: #fef08a !important; /* Stabilo Kuning Cerah */
+  color: #0f172a !important;
+  padding: 2px 7px !important;
+  border-radius: 6px !important;
+  box-shadow: 2px 2px 0 rgba(30, 41, 59, 0.15) !important;
+  display: inline-block !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  border: 1.5px dashed #ca8a04 !important;
+  font-size: 0.95rem;
 }
 
-/* Badge & Kotak Skor / Kata / Nyawa (Gaya Sticker Pastel) */
-header .flex.items-center.gap-1\.5,
-header #livesDisplay {
+/* Kotak Slot Huruf Target */
+.letter-slot {
+  width: 2.6rem !important;
+  height: 2.85rem !important;
+  background: #ffffff !important;
+  border: 2.5px solid #1e293b !important;
+  border-radius: 12px !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  color: #94a3b8 !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 1.45rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+@media (min-width: 640px) {
+  .letter-slot {
+    width: 2.9rem !important;
+    height: 3.15rem !important;
+    font-size: 1.65rem !important;
+  }
+}
+
+/* Slot Terisi: Hijau Mint Mengkilap Bouncing */
+.letter-slot.filled {
+  background: linear-gradient(135deg, #6ee7b7, #10b981) !important;
+  border-color: #064e3b !important;
+  box-shadow: 2.5px 3.5px 0 #064e3b !important;
+  color: #ffffff !important;
+  text-shadow: 0 2px 0 #064e3b !important;
+  transform: translateY(-2px) scale(1.06) rotate(-1deg) !important;
+  animation: slimeSquish 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Slot Aktif (Urutan Berikutnya yang Dicari): Bergaris Stabilo Kuning Berdenyut */
+.letter-slot.active-target {
+  background: #fef9c3 !important;
+  border: 3px solid #eab308 !important;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5), 2px 2px 0 #1e293b !important;
+  color: #ca8a04 !important;
+  animation: activeSlotPulse 1.1s ease-in-out infinite !important;
+}
+
+@keyframes activeSlotPulse {
+  0%, 100% {
+    transform: translateY(-1px) scale(1.04);
+    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5), 2px 2px 0 #1e293b;
+  }
+  50% {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.75), 2px 4px 0 #1e293b;
+  }
+}
+
+@keyframes slimeSquish {
+  0% { transform: scale(0.85, 1.2) translateY(0); }
+  50% { transform: scale(1.12, 0.9) translateY(-4px); }
+  100% { transform: scale(1.06, 1.06) translateY(-2px) rotate(-1deg); }
+}
+
+/* Tombol Aksi di Panel Atas */
+.header-btn {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 2px solid #1e293b !important;
+  box-shadow: 2px 2px 0 #1e293b !important;
+  border-radius: 12px !important;
+  font-family: 'Baloo 2', cursive, sans-serif !important;
+  font-weight: 700 !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+.header-btn:hover {
+  background: #f8fafc !important;
+}
+
+.header-btn:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0px 0px 0 #1e293b !important;
+}
+
+/* Badge Skor, Kata, & Nyawa */
+.stat-pill {
   background: #ffffff !important;
   border: 2px solid #1e293b !important;
   box-shadow: 2px 2px 0 #1e293b !important;
@@ -56,144 +154,39 @@ header #livesDisplay {
 #scoreDisplay {
   color: #d97706 !important;
   font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-size: 1.15rem !important;
+  font-size: 1.1rem !important;
 }
 
 #wordsCountDisplay {
   color: #059669 !important;
   font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-size: 1.15rem !important;
+  font-size: 1.1rem !important;
 }
 
-/* Tombol Header (Aturan & Suara) */
-#btnRulesModal, #btnSoundToggle {
-  background: #ffffff !important;
-  color: #1e293b !important;
-  border: 2px solid #1e293b !important;
-  box-shadow: 2px 2px 0 #1e293b !important;
-  border-radius: 12px !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 700 !important;
-  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
-}
-
-#btnRulesModal:hover, #btnSoundToggle:hover {
-  background: #f8fafc !important;
-}
-
-#btnRulesModal:active, #btnSoundToggle:active {
-  transform: translate(2px, 2px) !important;
-  box-shadow: 0px 0px 0 #1e293b !important;
-}
-
-/* Panel Target Kata (Kertas Buku Bergaris Kotak-Kotak) */
-main section {
-  background-color: #ffffff !important;
-  background-image: 
-    linear-gradient(rgba(203, 213, 225, 0.4) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(203, 213, 225, 0.4) 1px, transparent 1px) !important;
-  background-size: 16px 16px !important;
-  border: 3px solid #1e293b !important;
-  box-shadow: 4px 4px 0 #1e293b !important;
-  border-radius: 20px !important;
-}
-
-#modeBadge {
-  background: #bbf7d0 !important;
-  color: #065f46 !important;
-  border: 2px solid #1e293b !important;
-  box-shadow: 2px 2px 0 #1e293b !important;
-  border-radius: 10px !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 800 !important;
-}
-
-#orderBadge {
-  background: #bae6fd !important;
-  color: #0369a1 !important;
-  border: 2px solid #1e293b !important;
-  box-shadow: 2px 2px 0 #1e293b !important;
-  border-radius: 10px !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 800 !important;
-}
-
-/* Petunjuk Kata dengan Aksen Stabilo Kuning */
-#wordClueText {
-  color: #334155 !important;
-  font-weight: 700 !important;
-  margin-top: 6px !important;
-}
-
-#wordClueText strong {
-  background: #fef08a !important; /* Stabilo Kuning Cerah */
-  color: #0f172a !important;
-  padding: 2px 8px !important;
-  border-radius: 6px !important;
-  box-shadow: 2px 2px 0 rgba(30, 41, 59, 0.15) !important;
-  display: inline-block !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 800 !important;
-  transform: rotate(-0.5deg) !important;
-  border: 1.5px dashed #ca8a04 !important;
-}
-
-/* Slot Huruf (Kartu Tebal Kenyal) */
-.letter-slot {
-  width: 3.25rem !important;
-  height: 3.5rem !important;
-  background: #ffffff !important;
-  border: 3px solid #1e293b !important;
-  border-radius: 16px !important;
-  box-shadow: 3px 3px 0 #1e293b !important;
-  color: #94a3b8 !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 800 !important;
-  font-size: 1.5rem !important;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-}
-
-/* Slot Huruf saat Terisi (Jeli Mint Mengkilap Bouncing) */
-.letter-slot.filled {
-  background: linear-gradient(135deg, #6ee7b7, #10b981) !important;
-  border-color: #064e3b !important;
-  box-shadow: 3px 5px 0 #064e3b !important;
-  color: #ffffff !important;
-  text-shadow: 0 2px 0 #064e3b !important;
-  transform: translateY(-4px) scale(1.08) rotate(-1.5deg) !important;
-  animation: slimeSquish 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes slimeSquish {
-  0% { transform: scale(0.8, 1.25) translateY(0); }
-  50% { transform: scale(1.15, 0.85) translateY(-6px); }
-  100% { transform: scale(1.08, 1.08) translateY(-4px) rotate(-1.5deg); }
-}
-
-#btnSkipWord {
-  background: #ffffff !important;
-  color: #1e293b !important;
-  border: 2px solid #1e293b !important;
-  box-shadow: 2.5px 2.5px 0 #1e293b !important;
-  border-radius: 14px !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 700 !important;
-}
-
-#btnSkipWord:active {
-  transform: translate(2px, 2px) !important;
-  box-shadow: 0.5px 0.5px 0 #1e293b !important;
-}
-
-/* Kanvas Area Permainan */
+/* ==========================================
+   AREA KANVAS PERMAINAN (LEBAR PENUH TANPA FRAME KOSONG)
+   ========================================== */
 #canvasWrapper {
-  border: 3.5px solid #1e293b !important;
-  border-radius: 24px !important;
-  box-shadow: 5px 5px 0 #1e293b !important;
-  background: #090d16 !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 1 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-color: #090d16 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-/* Toast Status Popup */
+#gameCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+/* Status Toast Popup */
 #statusToast {
   background: #ffffff !important;
   color: #065f46 !important;
@@ -204,29 +197,49 @@ main section {
   font-weight: 800 !important;
 }
 
-/* Tombol D-Pad Sentuh (Chunky Squishy) */
+/* ==========================================
+   KONTROL D-PAD SENTUH (>= 64px, SEMI TRANSPARAN)
+   ========================================== */
 .dpad-btn {
-  background: #ffffff !important;
-  border: 2.5px solid #1e293b !important;
-  color: #1e293b !important;
-  box-shadow: 0 4px 0 #1e293b !important;
-  border-radius: 14px !important;
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  border: 2.5px solid rgba(30, 41, 59, 0.75) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 0 rgba(30, 41, 59, 0.45) !important;
+  border-radius: 18px !important;
   font-family: 'Baloo 2', cursive, sans-serif !important;
   font-weight: 800 !important;
-  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+  font-size: 1.6rem !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  touch-action: manipulation;
 }
 
 .dpad-btn:hover {
-  background: #f8fafc !important;
+  background: rgba(255, 255, 255, 0.88) !important;
 }
 
 .dpad-btn:active {
   transform: translateY(3px) !important;
-  box-shadow: 0 1px 0 #1e293b !important;
+  box-shadow: 0 1px 0 rgba(30, 41, 59, 0.45) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
 }
 
-/* Pill Petunjuk Kontrol Bawah Kiri */
-main #canvasWrapper > div.hidden.sm\:flex {
+/* ==========================================
+   BANTUAN KONTROL (LEGENDA DI KIRI BAWAH)
+   ========================================== */
+#btnToggleLegend {
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+#legendPill {
   background: rgba(255, 255, 255, 0.95) !important;
   color: #1e293b !important;
   border: 2px solid #1e293b !important;
@@ -235,32 +248,9 @@ main #canvasWrapper > div.hidden.sm\:flex {
   font-weight: 700 !important;
 }
 
-/* Footer Riwayat Kata */
-footer {
-  background-color: #ffffff !important;
-  border: 2.5px solid #1e293b !important;
-  box-shadow: 3px 3px 0 #1e293b !important;
-  border-radius: 16px !important;
-  color: #475569 !important;
-}
-
-footer span.font-semibold {
-  color: #0f172a !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 800 !important;
-  font-size: 0.9rem !important;
-}
-
-#wordHistoryPills span {
-  border: 1.5px solid #1e293b !important;
-  box-shadow: 1.5px 1.5px 0 #1e293b !important;
-  background: #bbf7d0 !important;
-  color: #064e3b !important;
-  font-family: 'Baloo 2', cursive, sans-serif !important;
-  font-weight: 800 !important;
-}
-
-/* Modals (Game Over & Aturan) Bergaya Kartu Lembar Tugas / Buku */
+/* ==========================================
+   MODAL DIALOG (GAME OVER & PENGATURAN ATURAN)
+   ========================================== */
 #gameOverModal > div,
 #rulesModal > div {
   background-color: #ffffff !important;
