@@ -220,6 +220,11 @@ document.getElementById("btnApplyRules").addEventListener("click", () => {
   rules.orderRule = document.getElementById("selectOrderRule").value;
   rules.penaltyRule = document.getElementById("selectPenaltyRule").value;
   rules.highlightHint = document.getElementById("selectHighlightHint").value;
+  const selectCrumble = document.getElementById("selectCrumbleTiles");
+  if (selectCrumble) {
+    rules.crumbleTiles = selectCrumble.value;
+    saveCrumblePref(rules.crumbleTiles);
+  }
   state.paused = false;
   document.getElementById("rulesModal").classList.add("hidden");
   startNewGame();
@@ -290,6 +295,9 @@ window.addEventListener("resize", () => {
 });
 
 window.onload = () => {
+  // Samakan pilihan di modal Aturan dengan pengaturan papan runtuh yang tersimpan
+  const selectCrumble = document.getElementById("selectCrumbleTiles");
+  if (selectCrumble) selectCrumble.value = rules.crumbleTiles;
   resizeCanvas();
   updateAudioUI();
   startNewGame();

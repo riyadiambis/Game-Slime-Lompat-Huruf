@@ -13,8 +13,24 @@ const rules = {
   gameMode: "quest",
   orderRule: "strict",   // Selalu "strict" (wajib berurutan 1 sampai 4)
   penaltyRule: "none",   // Ramah anak: makan huruf salah tanpa penalti
-  highlightHint: "off"   // Selalu "off" (tanpa penanda warna/halo pada huruf target)
+  highlightHint: "off",  // Selalu "off" (tanpa penanda warna/halo pada huruf target)
+  crumbleTiles: loadCrumblePref() // "off" = papan runtuh dinonaktifkan (lebih mudah)
 };
+
+// Pilihan papan runtuh disimpan agar tetap sama setelah halaman dimuat ulang
+function loadCrumblePref() {
+  try {
+    return localStorage.getItem("slime_crumble_tiles") === "on" ? "on" : "off";
+  } catch (e) {
+    return "off";
+  }
+}
+
+function saveCrumblePref(value) {
+  try {
+    localStorage.setItem("slime_crumble_tiles", value);
+  } catch (e) {}
+}
 
 let state = {
   score: 0,
@@ -100,10 +116,11 @@ function generateRow(rowIndex) {
   const isSafeStart = rowIndex <= 2;
   let rowType = "grass";
   if (!isSafeStart) {
+    // Jalur monster dibuat lebih jarang (18%) agar ramah anak
     const r = Math.random();
-    if (r < 0.55) rowType = "grass";
-    else if (r < 0.82) rowType = "road";
-    else rowType = "crumble";
+    if (r < 0.67) rowType = "grass";
+    else if (r < 0.85) rowType = "road";
+    else rowType = rules.crumbleTiles === "on" ? "crumble" : "grass";
   }
 
   const tiles = [];
@@ -149,8 +166,10 @@ function generateRow(rowIndex) {
   const obstacles = [];
   if (rowType === "road" && !isSafeStart) {
     const dir = Math.random() < 0.5 ? 1 : -1;
-    const speed = 1.15 + Math.random() * 1.15 + Math.min(0.8, state.wordsCompleted * 0.08);
-    const count = Math.random() < 0.45 ? 2 : 1;
+    // Kecepatan pelan (0,6 - 1,1 petak/detik), naik sedikit sekali seiring kata yang selesai
+    const speed = 0.6 + Math.random() * 0.5 + Math.min(0.4, state.wordsCompleted * 0.04);
+    // Hanya sesekali (15%) ada 2 monster dalam satu jalur
+    const count = Math.random() < 0.15 ? 2 : 1;
     for (let i = 0; i < count; i++) {
       obstacles.push({
         x: (i * (COLS / count) + Math.random() * 1.5) % COLS,
